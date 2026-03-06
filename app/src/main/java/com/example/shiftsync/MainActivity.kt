@@ -68,7 +68,9 @@ fun ShiftSyncApp() {
             onBack = { screen = Screen.HOME }
         )
         Screen.PROFILE -> ProfileScreen(
-            onBack = { screen = Screen.HOME }
+            onBack = { screen = Screen.HOME },
+            onCalendarView = { screen = Screen.CALENDAR },
+            onNotifications = { screen = Screen.NOTIFICATIONS }
         )
     }
 }

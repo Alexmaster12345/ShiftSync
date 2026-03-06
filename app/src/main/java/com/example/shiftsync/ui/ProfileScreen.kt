@@ -2,12 +2,16 @@
 package com.example.shiftsync.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,7 +27,11 @@ import androidx.compose.ui.unit.sp
 import com.example.shiftsync.ui.theme.*
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit) {
+fun ProfileScreen(
+    onBack: () -> Unit,
+    onCalendarView: () -> Unit = onBack,
+    onNotifications: () -> Unit = onBack
+) {
     Scaffold(
         containerColor = DarkBg,
         topBar = {
@@ -36,7 +44,7 @@ fun ProfileScreen(onBack: () -> Unit) {
             ) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        Icons.Default.KeyboardArrowLeft,
+                        Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = "Back",
                         tint = TextPrimary,
                         modifier = Modifier.size(28.dp)
@@ -50,7 +58,16 @@ fun ProfileScreen(onBack: () -> Unit) {
                 }
             }
         },
-        bottomBar = { BottomNavBar(selected = 4) { onBack() } }
+        bottomBar = {
+            BottomNavBar(selected = 4) { index ->
+                when (index) {
+                    0 -> onBack()
+                    1 -> onCalendarView()
+                    3 -> onNotifications()
+                    else -> onBack()
+                }
+            }
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -122,8 +139,8 @@ fun ProfileScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(16.dp))
             SectionHeader("SUPPORT")
-            ProfileRow(Icons.Default.Notifications, "Help & FAQ", TextSecondary)
-            ProfileRow(Icons.Default.Notifications, "Privacy Policy", TextSecondary)
+            ProfileRow(Icons.Default.QuestionAnswer, "Help & FAQ", TextSecondary)
+            ProfileRow(Icons.Default.Shield, "Privacy Policy", TextSecondary)
             ProfileRow(Icons.Default.Info, "About ShiftSync", TextSecondary)
 
             Spacer(Modifier.height(24.dp))
@@ -138,7 +155,7 @@ fun ProfileScreen(onBack: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = RedAccent.copy(alpha = 0.15f)),
                 elevation = ButtonDefaults.buttonElevation(0.dp)
             ) {
-                Icon(Icons.Default.ExitToApp, contentDescription = null, tint = RedAccent, modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = RedAccent, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
                 Text("Sign Out", color = RedAccent, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             }
@@ -178,11 +195,12 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun ProfileRow(icon: ImageVector, label: String, iconTint: Color) {
+private fun ProfileRow(icon: ImageVector, label: String, iconTint: Color, onClick: () -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp),
+            .padding(bottom = 8.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = DarkCard)
     ) {
@@ -203,7 +221,7 @@ private fun ProfileRow(icon: ImageVector, label: String, iconTint: Color) {
             }
             Spacer(Modifier.width(12.dp))
             Text(label, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-            Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
