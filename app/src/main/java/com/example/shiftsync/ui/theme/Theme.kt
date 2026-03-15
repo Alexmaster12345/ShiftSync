@@ -41,6 +41,10 @@ fun ShiftSyncTheme(
     MaterialTheme(
         colorScheme = AppColorScheme,
         typography  = Typography,
-        content     = content
+        content     = {
+            ProvideDimens {
+                content()
+            }
+        }
     )
 }

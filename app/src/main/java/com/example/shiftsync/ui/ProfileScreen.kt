@@ -25,12 +25,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.shiftsync.ui.theme.*
+import com.example.shiftsync.ui.theme.LocalDimens
 
 @Composable
 fun ProfileScreen(
+    userName: String = "Guest",
     onBack: () -> Unit,
     onCalendarView: () -> Unit = onBack,
-    onNotifications: () -> Unit = onBack
+    onNotifications: () -> Unit = onBack,
+    onNotificationSettings: () -> Unit = {}
 ) {
     Scaffold(
         containerColor = DarkBg,
@@ -69,32 +72,36 @@ fun ProfileScreen(
             }
         }
     ) { padding ->
+        val dimens = LocalDimens.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = dimens.screenPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(dimens.spaceMedium))
 
             // ── Avatar ────────────────────────────────────────────────
             Box(
                 modifier = Modifier
-                    .size(90.dp)
+                    .size(dimens.avatarLarge)
                     .clip(CircleShape)
                     .background(Brush.linearGradient(listOf(ShiftBlue, ShiftBlueDark))),
                 contentAlignment = Alignment.Center
             ) {
-                Text("A", color = Color.White, fontSize = 38.sp, fontWeight = FontWeight.ExtraBold)
+                Text(userName.first().uppercase(), color = Color.White, fontSize = (38 * dimens.scaleFactor).sp, fontWeight = FontWeight.ExtraBold)
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(dimens.spaceMedium))
 
-            Text("Alex Johnson", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(userName, color = TextPrimary, fontSize = dimens.fontTitle, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
-            Text("Senior Barista", color = TextSecondary, fontSize = 14.sp)
+            Text(
+                if (userName == "Guest") "Guest User" else "Senior Barista",
+                color = TextSecondary, fontSize = 14.sp
+            )
 
             Spacer(Modifier.height(4.dp))
 
@@ -103,7 +110,7 @@ fun ProfileScreen(
                 color = ShiftBlue.copy(alpha = 0.15f)
             ) {
                 Text(
-                    "EMP-12345",
+                    if (userName == "Guest") "GUEST" else "EMP-12345",
                     color = ShiftBlue,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -126,14 +133,16 @@ fun ProfileScreen(
             Spacer(Modifier.height(28.dp))
 
             // ── Settings sections ─────────────────────────────────────
-            SectionHeader("ACCOUNT")
-            ProfileRow(Icons.Default.Person, "Personal Info", ShiftBlue)
-            ProfileRow(Icons.Default.AccountBox, "Job Details", ShiftBlue)
-            ProfileRow(Icons.Default.Lock, "Change Password", ShiftBlue)
+            if (userName != "Guest") {
+                SectionHeader("ACCOUNT")
+                ProfileRow(Icons.Default.Person, "Personal Info", ShiftBlue)
+                ProfileRow(Icons.Default.AccountBox, "Job Details", ShiftBlue)
+                ProfileRow(Icons.Default.Lock, "Change Password", ShiftBlue)
+            }
 
             Spacer(Modifier.height(16.dp))
             SectionHeader("PREFERENCES")
-            ProfileRow(Icons.Default.Notifications, "Notification Settings", OrangeAccent)
+            ProfileRow(Icons.Default.Notifications, "Notification Settings", OrangeAccent, onClick = onNotificationSettings)
             ProfileRow(Icons.Default.Star, "Appearance", OrangeAccent)
             ProfileRow(Icons.Default.Settings, "Language", OrangeAccent)
 
@@ -167,18 +176,19 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileStatCard(modifier: Modifier, value: String, label: String) {
+    val dimens = LocalDimens.current
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = DarkCard)
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 14.dp, horizontal = 8.dp),
+            modifier = Modifier.padding(vertical = dimens.spaceMedium, horizontal = dimens.spaceSmall),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(value, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text(value, color = TextPrimary, fontSize = (18 * dimens.scaleFactor).sp, fontWeight = FontWeight.ExtraBold)
             Spacer(Modifier.height(3.dp))
-            Text(label, color = TextSecondary, fontSize = 10.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(label, color = TextSecondary, fontSize = dimens.fontCaption, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }

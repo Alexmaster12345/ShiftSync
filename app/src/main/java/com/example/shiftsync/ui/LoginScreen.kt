@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.shiftsync.ui.theme.ShiftBlue
 import com.example.shiftsync.ui.theme.TextMuted
+import com.example.shiftsync.ui.theme.LocalDimens
 
 // Login screen uses a LIGHT white background exactly like the mockup PNG
 private val LightBg       = Color(0xFFFFFFFF)
@@ -36,7 +37,7 @@ private val LightBorder   = Color(0xFFE5E7EB)
 private val LightField    = Color(0xFFF9FAFB)
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(onLoginSuccess: (String) -> Unit) {
     var identifier by remember { mutableStateOf("") }
     var password   by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -46,19 +47,20 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             .fillMaxSize()
             .background(LightBg)
     ) {
+        val dimens = LocalDimens.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp),
+                .padding(horizontal = (28 * dimens.scaleFactor).dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(72.dp))
+            Spacer(Modifier.height((72 * dimens.scaleFactor).dp))
 
             // ── App icon ──────────────────────────────────────────────
             Box(
                 modifier = Modifier
-                    .size(84.dp)
+                    .size((84 * dimens.scaleFactor).dp)
                     .shadow(8.dp, RoundedCornerShape(22.dp))
                     .clip(RoundedCornerShape(22.dp))
                     .background(ShiftBlue),
@@ -68,7 +70,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     imageVector = Icons.Default.SyncAlt,
                     contentDescription = "ShiftSync",
                     tint = Color.White,
-                    modifier = Modifier.size(46.dp)
+                    modifier = Modifier.size((46 * dimens.scaleFactor).dp)
                 )
             }
 
@@ -79,26 +81,26 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 text = "ShiftSync",
                 color = ShiftBlue,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 30.sp,
+                fontSize = (30 * dimens.scaleFactor).sp,
                 letterSpacing = (-0.5).sp
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = "EMPLOYEE PORTAL",
                 color = LightSubText,
-                fontSize = 11.sp,
+                fontSize = dimens.fontSmall,
                 letterSpacing = 3.sp,
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(Modifier.height(44.dp))
+            Spacer(Modifier.height((44 * dimens.scaleFactor).dp))
 
             // ── Heading ───────────────────────────────────────────────
             Text(
                 text = "Employee Login",
                 color = LightText,
                 fontWeight = FontWeight.ExtraBold,
-                fontSize = 28.sp,
+                fontSize = (28 * dimens.scaleFactor).sp,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(6.dp))
@@ -208,10 +210,10 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
             // ── Sign In ───────────────────────────────────────────────
             Button(
-                onClick = { onLoginSuccess() },
+                onClick = { onLoginSuccess(identifier.ifBlank { "User" }) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
+                    .height((54 * dimens.scaleFactor).dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ShiftBlue),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
@@ -228,10 +230,10 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
             // ── Continue as Guest ─────────────────────────────────────
             OutlinedButton(
-                onClick = { onLoginSuccess() },
+                onClick = { onLoginSuccess("Guest") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
+                    .height((54 * dimens.scaleFactor).dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = LightText),
                 border = androidx.compose.foundation.BorderStroke(1.dp, LightBorder)

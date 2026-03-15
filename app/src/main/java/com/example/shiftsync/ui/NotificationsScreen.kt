@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.shiftsync.ui.theme.*
+import com.example.shiftsync.ui.theme.LocalDimens
 
 private data class NotifItem(
     val icon: ImageVector,
@@ -75,11 +76,12 @@ fun NotificationsScreen(onBack: () -> Unit) {
         },
         bottomBar = { BottomNavBar(selected = -1) { onBack() } }
     ) { padding ->
+        val dimens = LocalDimens.current
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = dimens.spaceMedium),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 12.dp)
         ) {

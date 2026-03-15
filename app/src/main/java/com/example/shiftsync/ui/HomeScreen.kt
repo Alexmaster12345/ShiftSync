@@ -30,17 +30,20 @@ import com.example.shiftsync.ClockForegroundService
 import com.example.shiftsync.KEY_ACTIVE_START_MILLIS
 import com.example.shiftsync.NO_ACTIVE_SHIFT
 import com.example.shiftsync.PREFS_NAME
+import com.example.shiftsync.ShiftAlertHelper
 import com.example.shiftsync.ShiftEntry
 import com.example.shiftsync.formatCurrency
 import com.example.shiftsync.formatDuration
 import com.example.shiftsync.loadEntries
 import com.example.shiftsync.ui.theme.*
+import com.example.shiftsync.ui.theme.LocalDimens
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
 fun HomeScreen(
+    userName: String = "Guest",
     onAddManualEntry: () -> Unit,
     onCalendarView: () -> Unit = {},
     onNotifications: () -> Unit = {},
@@ -116,14 +119,15 @@ fun HomeScreen(
             })
         }
     ) { padding ->
+        val dimens = LocalDimens.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = dimens.screenPadding)
         ) {
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(dimens.spaceLarge))
 
             // ── Top bar ──────────────────────────────────────────────
             Row(
@@ -135,27 +139,27 @@ fun HomeScreen(
                     Text(
                         text = todayLabel,
                         color = ShiftBlue,
-                        fontSize = 12.sp,
+                        fontSize = dimens.fontSmall,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = "Hello, Alex",
+                        text = "Hello, $userName",
                         color = TextPrimary,
-                        fontSize = 26.sp,
+                        fontSize = dimens.fontHeadline,
                         fontWeight = FontWeight.Bold
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(horizontalArrangement = Arrangement.spacedBy(dimens.spaceSmall), verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(dimens.avatarSmall)
                             .clip(CircleShape)
                             .background(DarkCard)
                             .clickable { onNotifications() },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary, modifier = Modifier.size(dimens.iconMedium))
                         Box(
                             modifier = Modifier
                                 .size(9.dp)
@@ -166,13 +170,13 @@ fun HomeScreen(
                     }
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(dimens.avatarSmall)
                             .clip(CircleShape)
                             .background(DarkCard)
                             .clickable { onProfile() },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile", tint = TextSecondary, modifier = Modifier.size(22.dp))
+                        Icon(Icons.Default.Person, contentDescription = "Profile", tint = TextSecondary, modifier = Modifier.size(dimens.iconLarge))
                     }
                 }
             }
@@ -249,7 +253,7 @@ fun HomeScreen(
                     Text(
                         text = if (isClocked) formatDuration(elapsedMinutes) else "09:00 - 17:00",
                         color = Color.White,
-                        fontSize = 34.sp,
+                        fontSize = dimens.fontHero,
                         fontWeight = FontWeight.ExtraBold
                     )
 
@@ -275,15 +279,18 @@ fun HomeScreen(
                                 activeStartMillis = startMillis
                                 prefs.edit().putLong(KEY_ACTIVE_START_MILLIS, startMillis).apply()
                                 context.startClockService(ClockForegroundService.ACTION_START)
+                                ShiftAlertHelper.fireShiftStartAlert(context)
                             } else {
+                                val durationMins = elapsedMinutes
                                 activeStartMillis = null
                                 prefs.edit().remove(KEY_ACTIVE_START_MILLIS).apply()
                                 context.startClockService(ClockForegroundService.ACTION_STOP)
+                                ShiftAlertHelper.fireShiftEndAlert(context, durationMins)
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
+                            .height(dimens.buttonHeight),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White)
                     ) {
@@ -391,13 +398,13 @@ fun HomeScreen(
                             Text(
                                 name,
                                 color = if (isSelected) Color.White else TextSecondary,
-                                fontSize = 8.sp, fontWeight = FontWeight.SemiBold
+                                fontSize = dimens.weekDayLabelSize, fontWeight = FontWeight.SemiBold
                             )
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(dimens.spaceXSmall))
                             Text(
                                 day.toString(),
                                 color = if (isSelected) Color.White else TextPrimary,
-                                fontSize = 15.sp, fontWeight = FontWeight.Bold
+                                fontSize = dimens.weekDayNumberSize, fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -491,16 +498,17 @@ private fun StatsCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkCard)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        val dimens = LocalDimens.current
+        Column(modifier = Modifier.padding(dimens.spaceMedium)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                Icon(icon, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(dimens.iconSmall))
                 Spacer(Modifier.width(6.dp))
-                Text(label, color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
+                Text(label, color = TextSecondary, fontSize = dimens.fontCaption, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(dimens.spaceSmall))
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-                if (valueSuffix != null) Text(valueSuffix, color = TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(bottom = 3.dp))
+                Text(value, color = TextPrimary, fontSize = dimens.statsValueSize, fontWeight = FontWeight.ExtraBold)
+                if (valueSuffix != null) Text(valueSuffix, color = TextSecondary, fontSize = dimens.fontBody, modifier = Modifier.padding(bottom = 3.dp))
             }
             if (progress != null) {
                 Spacer(Modifier.height(8.dp))
@@ -559,6 +567,7 @@ private fun UpcomingShiftRow(dayAbbr: String, dayNum: String, time: String, role
 
 @Composable
 fun BottomNavBar(selected: Int, onNavigate: (Int) -> Unit = {}) {
+    val dimens = LocalDimens.current
     NavigationBar(containerColor = DarkSurface, tonalElevation = 0.dp) {
         val items = listOf(
             Pair(Icons.Default.Home, "Home"),
@@ -571,8 +580,8 @@ fun BottomNavBar(selected: Int, onNavigate: (Int) -> Unit = {}) {
             NavigationBarItem(
                 selected = index == selected,
                 onClick = { onNavigate(index) },
-                icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp)) },
-                label = { Text(label, fontSize = 10.sp) },
+                icon = { Icon(icon, contentDescription = label, modifier = Modifier.size(dimens.navIconSize)) },
+                label = { Text(label, fontSize = dimens.navLabelSize) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = ShiftBlue,
                     selectedTextColor = ShiftBlue,

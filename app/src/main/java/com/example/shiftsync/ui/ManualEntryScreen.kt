@@ -28,6 +28,7 @@ import com.example.shiftsync.ShiftType
 import com.example.shiftsync.loadEntries
 import com.example.shiftsync.saveEntries
 import com.example.shiftsync.ui.theme.*
+import com.example.shiftsync.ui.theme.LocalDimens
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,12 +136,13 @@ fun ManualEntryScreen(onBack: () -> Unit) {
             }
         }
     ) { padding ->
+        val dimens = LocalDimens.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = dimens.screenPadding)
         ) {
             Spacer(Modifier.height(8.dp))
 

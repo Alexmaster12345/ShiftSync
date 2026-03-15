@@ -56,6 +56,25 @@ const val KEY_ACTIVE_START_MILLIS = "active_start_millis"
 const val KEY_ACTIVE_SHIFT_TYPE = "active_shift_type"
 const val NO_ACTIVE_SHIFT = -1L
 
+// Notification preference keys
+const val KEY_NOTIFY_SHIFT_START = "notify_shift_start"
+const val KEY_NOTIFY_SHIFT_END = "notify_shift_end"
+const val KEY_NOTIFY_SOUND = "notify_sound"
+const val KEY_NOTIFY_VIBRATE = "notify_vibrate"
+
+// Scheduled reminder keys
+const val KEY_REMINDER_CLOCK_IN_ENABLED = "reminder_clock_in_enabled"
+const val KEY_REMINDER_CLOCK_IN_HOUR = "reminder_clock_in_hour"
+const val KEY_REMINDER_CLOCK_IN_MINUTE = "reminder_clock_in_minute"
+const val KEY_REMINDER_CLOCK_IN_DAYS = "reminder_clock_in_days"
+const val KEY_REMINDER_CLOCK_OUT_ENABLED = "reminder_clock_out_enabled"
+const val KEY_REMINDER_CLOCK_OUT_HOUR = "reminder_clock_out_hour"
+const val KEY_REMINDER_CLOCK_OUT_MINUTE = "reminder_clock_out_minute"
+const val KEY_REMINDER_CLOCK_OUT_DAYS = "reminder_clock_out_days"
+
+// Day indices: 1=Sun, 2=Mon, 3=Tue, 4=Wed, 5=Thu, 6=Fri, 7=Sat (matches Calendar.DAY_OF_WEEK)
+val DEFAULT_REMINDER_DAYS: Set<String> = setOf("2","3","4","5","6") // Mon–Fri
+
 private const val ENTRY_DELIMITER = ";"
 private const val FIELD_DELIMITER = ","
 

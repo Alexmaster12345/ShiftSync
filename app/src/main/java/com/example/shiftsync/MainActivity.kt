@@ -27,12 +27,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { LOGIN, HOME, MANUAL_ENTRY, CALENDAR, NOTIFICATIONS, PROFILE }
+private enum class Screen { LOGIN, HOME, MANUAL_ENTRY, CALENDAR, NOTIFICATIONS, PROFILE, NOTIFICATION_SETTINGS }
 
 @Composable
 fun ShiftSyncApp() {
     val context = LocalContext.current
     var screen by remember { mutableStateOf(Screen.LOGIN) }
+    var userName by remember { mutableStateOf("Guest") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -50,9 +51,13 @@ fun ShiftSyncApp() {
 
     when (screen) {
         Screen.LOGIN -> LoginScreen(
-            onLoginSuccess = { screen = Screen.HOME }
+            onLoginSuccess = { name ->
+                userName = name
+                screen = Screen.HOME
+            }
         )
         Screen.HOME -> HomeScreen(
+            userName          = userName,
             onAddManualEntry  = { screen = Screen.MANUAL_ENTRY },
             onCalendarView    = { screen = Screen.CALENDAR },
             onNotifications   = { screen = Screen.NOTIFICATIONS },
@@ -68,9 +73,14 @@ fun ShiftSyncApp() {
             onBack = { screen = Screen.HOME }
         )
         Screen.PROFILE -> ProfileScreen(
+            userName = userName,
             onBack = { screen = Screen.HOME },
             onCalendarView = { screen = Screen.CALENDAR },
-            onNotifications = { screen = Screen.NOTIFICATIONS }
+            onNotifications = { screen = Screen.NOTIFICATIONS },
+            onNotificationSettings = { screen = Screen.NOTIFICATION_SETTINGS }
+        )
+        Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(
+            onBack = { screen = Screen.PROFILE }
         )
     }
 }

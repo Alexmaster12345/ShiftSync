@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.shiftsync.ui.theme.*
+import com.example.shiftsync.ui.theme.LocalDimens
 import java.util.*
 
 @Composable
@@ -81,12 +82,13 @@ fun CalendarScreen(onBack: () -> Unit) {
         },
         bottomBar = { BottomNavBar(selected = 1) { onBack() } }
     ) { padding ->
+        val dimens = LocalDimens.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = dimens.screenPadding)
         ) {
             Spacer(Modifier.height(8.dp))
 
