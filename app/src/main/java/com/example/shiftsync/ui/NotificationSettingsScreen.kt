@@ -106,10 +106,9 @@ fun NotificationSettingsScreen(onBack: () -> Unit) {
                     }
                 }
             }
-        }
-
-        Text("SHIFT REMINDERS", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
-        AppCard {
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = BorderColor)
+            Spacer(Modifier.height(4.dp))
             SimpleRow(
                 Icons.Default.Notifications,
                 ShiftBlue,
