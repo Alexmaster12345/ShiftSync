@@ -35,7 +35,7 @@ import java.util.*
 fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    val entries = remember { loadEntries(prefs) }
+    val entries = loadEntries(prefs)
     val today = Calendar.getInstance()
     var month by remember { mutableIntStateOf(today.get(Calendar.MONTH)) }
     var year by remember { mutableIntStateOf(today.get(Calendar.YEAR)) }
