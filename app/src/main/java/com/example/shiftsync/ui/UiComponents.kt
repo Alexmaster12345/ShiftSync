@@ -123,7 +123,7 @@ private fun NavButton(item: NavItem, active: Boolean, onNavigate: (NavItem) -> U
         Box(
             Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (active) ShiftBlue.copy(.14f) else Color.Transparent),
             contentAlignment = Alignment.Center
-        ) { Icon(item.icon, null, tint = if (active) ShiftBlue else TextSecondary) }
+        ) { Icon(item.icon, null, tint = if (active) ShiftBlue else TextSecondary, modifier = Modifier.size(28.dp)) }
     }
 }
 
