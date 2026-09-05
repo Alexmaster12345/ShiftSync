@@ -52,7 +52,8 @@ data class AppSettings(
     val workplaceSet: Boolean = false,
     val autoGeofencingEnabled: Boolean = false,
     val workplaceLat: Double = 0.0,
-    val workplaceLng: Double = 0.0
+    val workplaceLng: Double = 0.0,
+    val vacationDaysPerYear: Int = 16
 )
 
 object PayrollCalculator {
@@ -127,6 +128,7 @@ const val KEY_WORKPLACE_LABEL = "workplace_label"
 const val KEY_WORKPLACE_LAT = "workplace_lat"
 const val KEY_WORKPLACE_LNG = "workplace_lng"
 const val KEY_AUTO_GEOFENCING = "auto_geofencing"
+const val KEY_VACATION_DAYS_PER_YEAR = "vacation_days_per_year"
 
 val DEFAULT_REMINDER_DAYS: Set<String> = setOf("2", "3", "4", "5", "6")
 private const val ENTRY_DELIMITER = ";"
@@ -151,7 +153,8 @@ fun loadSettings(prefs: SharedPreferences): AppSettings = AppSettings(
     workplaceSet = prefs.getBoolean(KEY_WORKPLACE_SET, false),
     autoGeofencingEnabled = prefs.getBoolean(KEY_AUTO_GEOFENCING, false),
     workplaceLat = prefs.getString(KEY_WORKPLACE_LAT, "0.0")?.toDoubleOrNull() ?: 0.0,
-    workplaceLng = prefs.getString(KEY_WORKPLACE_LNG, "0.0")?.toDoubleOrNull() ?: 0.0
+    workplaceLng = prefs.getString(KEY_WORKPLACE_LNG, "0.0")?.toDoubleOrNull() ?: 0.0,
+    vacationDaysPerYear = prefs.getInt(KEY_VACATION_DAYS_PER_YEAR, 16)
 )
 
 fun formatDate(epochMillis: Long): String = SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(epochMillis))
@@ -217,6 +220,14 @@ fun loadEntries(prefs: SharedPreferences): List<ShiftEntry> {
 fun entriesForMonth(entries: List<ShiftEntry>, year: Int, month: Int): List<ShiftEntry> = entries.filter {
     val cal = Calendar.getInstance().apply { timeInMillis = it.startedAtMillis }
     cal.get(Calendar.YEAR) == year && cal.get(Calendar.MONTH) == month
+}
+
+fun vacationDaysUsedThisYear(entries: List<ShiftEntry>): Int {
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+    return entries.count {
+        it.shiftType == ShiftType.VACATION &&
+            Calendar.getInstance().apply { timeInMillis = it.startedAtMillis }.get(Calendar.YEAR) == currentYear
+    }
 }
 
 fun exportPrefsToJson(prefs: SharedPreferences): JSONObject {

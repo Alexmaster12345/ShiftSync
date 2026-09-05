@@ -36,6 +36,7 @@ private fun ShiftSyncRoot() {
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var settings by remember { mutableStateOf(loadSettings(prefs)) }
     var screen by remember { mutableStateOf(if (prefs.contains(KEY_DISPLAY_NAME)) Screen.HOME else Screen.LOGIN) }
+    var salaryCurrencyOrigin by remember { mutableStateOf(Screen.PROFILE) }
     val refresh: () -> Unit = { settings = loadSettings(prefs) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -76,7 +77,9 @@ private fun ShiftSyncRoot() {
                 screen = when (it) {
                     NavItem.Home -> Screen.HOME; NavItem.Calendar -> Screen.CALENDAR; NavItem.Add -> Screen.MANUAL_ENTRY; NavItem.Workplace -> Screen.WORKPLACE; NavItem.Profile -> Screen.PROFILE
                 }
-            }, onOpen = { screen = it })
+            }, onOpen = { salaryCurrencyOrigin = Screen.PROFILE; screen = it }, onSignOut = {
+                prefs.edit().remove(KEY_DISPLAY_NAME).apply(); refresh(); screen = Screen.LOGIN
+            })
             Screen.APPEARANCE -> AppearanceScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
             Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(onBack = { refresh(); screen = Screen.PROFILE })
             Screen.PERSONAL_INFO -> PersonalInfoScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
@@ -84,10 +87,10 @@ private fun ShiftSyncRoot() {
             Screen.EXPORT_REPORTS -> ExportReportsScreen(settings, onBack = { screen = Screen.PROFILE })
             Screen.SECURITY_PRIVACY -> SecurityPrivacyScreen(
                 onBack = { screen = Screen.PROFILE },
-                onSalaryCurrency = { screen = Screen.SALARY_CURRENCY },
+                onSalaryCurrency = { salaryCurrencyOrigin = Screen.SECURITY_PRIVACY; screen = Screen.SALARY_CURRENCY },
                 onCleared = { refresh(); screen = Screen.LOGIN }
             )
-            Screen.SALARY_CURRENCY -> SalaryCurrencyScreen(settings, onBack = { refresh(); screen = Screen.SECURITY_PRIVACY }, onSaved = refresh)
+            Screen.SALARY_CURRENCY -> SalaryCurrencyScreen(settings, onBack = { refresh(); screen = salaryCurrencyOrigin }, onSaved = refresh)
             Screen.TERMS_OF_USE -> TermsOfUseScreen(onBack = { screen = Screen.PROFILE })
             Screen.PRIVACY_POLICY -> PrivacyPolicyScreen(onBack = { screen = Screen.PROFILE })
         }
