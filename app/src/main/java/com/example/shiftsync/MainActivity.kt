@@ -10,15 +10,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.example.shiftsync.ui.*
 import com.example.shiftsync.ui.theme.ShiftSyncTheme
-import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,14 +37,7 @@ private fun ShiftSyncRoot() {
     var settings by remember { mutableStateOf(loadSettings(prefs)) }
     var screen by remember { mutableStateOf(if (prefs.contains(KEY_DISPLAY_NAME)) Screen.HOME else Screen.LOGIN) }
     var salaryCurrencyOrigin by remember { mutableStateOf(Screen.PROFILE) }
-    var showSplash by remember { mutableStateOf(true) }
     val refresh: () -> Unit = { settings = loadSettings(prefs) }
-
-    // Mirrors the iOS ContentView's 2.5s splash hold before fading into the real content.
-    LaunchedEffect(Unit) {
-        delay(2500)
-        showSplash = false
-    }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -61,7 +50,6 @@ private fun ShiftSyncRoot() {
     }
 
     ShiftSyncTheme(settings.appearance) {
-        Box {
         when (screen) {
             Screen.LOGIN -> LoginScreen { name ->
                 prefs.edit().putString(KEY_DISPLAY_NAME, name).apply(); refresh(); screen = Screen.HOME
@@ -116,10 +104,6 @@ private fun ShiftSyncRoot() {
             Screen.SALARY_CURRENCY -> SalaryCurrencyScreen(settings, onBack = { refresh(); screen = salaryCurrencyOrigin }, onSaved = refresh)
             Screen.TERMS_OF_USE -> TermsOfUseScreen(onBack = { screen = Screen.PROFILE })
             Screen.PRIVACY_POLICY -> PrivacyPolicyScreen(onBack = { screen = Screen.PROFILE })
-        }
-        AnimatedVisibility(visible = showSplash, exit = fadeOut(androidx.compose.animation.core.tween(500))) {
-            SplashScreen()
-        }
         }
     }
 }
