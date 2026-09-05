@@ -1,6 +1,7 @@
 package com.example.shiftsync
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -19,68 +20,76 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            ShiftSyncTheme {
-                ShiftSyncApp()
-            }
-        }
+        setContent { ShiftSyncRoot() }
     }
 }
 
-private enum class Screen { LOGIN, HOME, MANUAL_ENTRY, CALENDAR, NOTIFICATIONS, PROFILE, NOTIFICATION_SETTINGS }
+enum class Screen {
+    LOGIN, HOME, NOTIFICATIONS, MANUAL_ENTRY, CALENDAR, WORKPLACE, MAP_PICKER, PROFILE,
+    APPEARANCE, NOTIFICATION_SETTINGS, PERSONAL_INFO, OVERTIME_RULES, EXPORT_REPORTS,
+    SECURITY_PRIVACY, SALARY_CURRENCY, TERMS_OF_USE, PRIVACY_POLICY
+}
 
 @Composable
-fun ShiftSyncApp() {
+private fun ShiftSyncRoot() {
     val context = LocalContext.current
-    var screen by remember { mutableStateOf(Screen.LOGIN) }
-    var userName by remember { mutableStateOf("Guest") }
+    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    var settings by remember { mutableStateOf(loadSettings(prefs)) }
+    var screen by remember { mutableStateOf(if (prefs.contains(KEY_DISPLAY_NAME)) Screen.HOME else Screen.LOGIN) }
+    val refresh: () -> Unit = { settings = loadSettings(prefs) }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) {}
-
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     LaunchedEffect(screen) {
-        if (screen == Screen.HOME &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (screen == Screen.HOME && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
-    when (screen) {
-        Screen.LOGIN -> LoginScreen(
-            onLoginSuccess = { name ->
-                userName = name
-                screen = Screen.HOME
+    ShiftSyncTheme(settings.appearance) {
+        when (screen) {
+            Screen.LOGIN -> LoginScreen { name ->
+                prefs.edit().putString(KEY_DISPLAY_NAME, name).apply(); refresh(); screen = Screen.HOME
             }
-        )
-        Screen.HOME -> HomeScreen(
-            userName          = userName,
-            onAddManualEntry  = { screen = Screen.MANUAL_ENTRY },
-            onCalendarView    = { screen = Screen.CALENDAR },
-            onNotifications   = { screen = Screen.NOTIFICATIONS },
-            onProfile         = { screen = Screen.PROFILE }
-        )
-        Screen.MANUAL_ENTRY -> ManualEntryScreen(
-            onBack = { screen = Screen.HOME }
-        )
-        Screen.CALENDAR -> CalendarScreen(
-            onBack = { screen = Screen.HOME }
-        )
-        Screen.NOTIFICATIONS -> NotificationsScreen(
-            onBack = { screen = Screen.HOME }
-        )
-        Screen.PROFILE -> ProfileScreen(
-            userName = userName,
-            onBack = { screen = Screen.HOME },
-            onCalendarView = { screen = Screen.CALENDAR },
-            onNotifications = { screen = Screen.NOTIFICATIONS },
-            onNotificationSettings = { screen = Screen.NOTIFICATION_SETTINGS }
-        )
-        Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(
-            onBack = { screen = Screen.PROFILE }
-        )
+            Screen.HOME -> HomeScreen(settings, { screen = Screen.MANUAL_ENTRY }, { screen = Screen.NOTIFICATIONS }) {
+                when (it) {
+                    NavItem.Home -> screen = Screen.HOME
+                    NavItem.Calendar -> screen = Screen.CALENDAR
+                    NavItem.Add -> screen = Screen.MANUAL_ENTRY
+                    NavItem.Workplace -> screen = Screen.WORKPLACE
+                    NavItem.Profile -> screen = Screen.PROFILE
+                }
+            }
+            Screen.NOTIFICATIONS -> NotificationsScreen(onBack = { screen = Screen.HOME })
+            Screen.MANUAL_ENTRY -> ManualEntryScreen(settings, onBack = { screen = Screen.HOME; refresh() })
+            Screen.CALENDAR -> CalendarScreen(onNavigate = {
+                screen = when (it) {
+                    NavItem.Home -> Screen.HOME; NavItem.Calendar -> Screen.CALENDAR; NavItem.Add -> Screen.MANUAL_ENTRY; NavItem.Workplace -> Screen.WORKPLACE; NavItem.Profile -> Screen.PROFILE
+                }
+            })
+            Screen.WORKPLACE -> WorkplaceScreen(settings, onOpenMap = { screen = Screen.MAP_PICKER }, onNavigate = {
+                screen = when (it) {
+                    NavItem.Home -> Screen.HOME; NavItem.Calendar -> Screen.CALENDAR; NavItem.Add -> Screen.MANUAL_ENTRY; NavItem.Workplace -> Screen.WORKPLACE; NavItem.Profile -> Screen.PROFILE
+                }
+            })
+            Screen.MAP_PICKER -> MapPickerScreen(onBack = { screen = Screen.WORKPLACE }, onSaved = { refresh(); screen = Screen.WORKPLACE })
+            Screen.PROFILE -> ProfileScreen(settings, onNavigate = {
+                screen = when (it) {
+                    NavItem.Home -> Screen.HOME; NavItem.Calendar -> Screen.CALENDAR; NavItem.Add -> Screen.MANUAL_ENTRY; NavItem.Workplace -> Screen.WORKPLACE; NavItem.Profile -> Screen.PROFILE
+                }
+            }, onOpen = { screen = it })
+            Screen.APPEARANCE -> AppearanceScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
+            Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(onBack = { refresh(); screen = Screen.PROFILE })
+            Screen.PERSONAL_INFO -> PersonalInfoScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
+            Screen.OVERTIME_RULES -> OvertimeRulesScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
+            Screen.EXPORT_REPORTS -> ExportReportsScreen(settings, onBack = { screen = Screen.PROFILE })
+            Screen.SECURITY_PRIVACY -> SecurityPrivacyScreen(
+                onBack = { screen = Screen.PROFILE },
+                onSalaryCurrency = { screen = Screen.SALARY_CURRENCY },
+                onCleared = { refresh(); screen = Screen.LOGIN }
+            )
+            Screen.SALARY_CURRENCY -> SalaryCurrencyScreen(settings, onBack = { refresh(); screen = Screen.SECURITY_PRIVACY }, onSaved = refresh)
+            Screen.TERMS_OF_USE -> TermsOfUseScreen(onBack = { screen = Screen.PROFILE })
+            Screen.PRIVACY_POLICY -> PrivacyPolicyScreen(onBack = { screen = Screen.PROFILE })
+        }
     }
 }
