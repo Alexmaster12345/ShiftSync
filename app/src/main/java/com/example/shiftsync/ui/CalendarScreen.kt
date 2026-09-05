@@ -90,10 +90,19 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("SHIFTS FOR ${monthNames[month].uppercase()}", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("${monthEntries.size} SHIFT • ${formatDuration(monthEntries.sumOf { it.durationMinutes }).uppercase()}", color = TextSecondary, fontSize = 12.sp)
+                    val shiftWord = if (monthEntries.size == 1) "SHIFT" else "SHIFTS"
+                    Text("${monthEntries.size} $shiftWord • ${formatDuration(monthEntries.sumOf { it.durationMinutes }).uppercase()}", color = TextSecondary, fontSize = 12.sp)
                 }
             }
-            items(if (selectedEntries.isEmpty()) monthEntries.take(1) else selectedEntries) { entry ->
+            if (selectedEntries.isEmpty()) {
+                item {
+                    AppCard {
+                        Text("No shifts on this day", fontWeight = FontWeight.SemiBold)
+                        Text("Pick another day or add a manual entry.", color = TextSecondary, fontSize = 13.sp)
+                    }
+                }
+            }
+            items(selectedEntries) { entry ->
                 AppCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(color = ShiftBlue.copy(.12f), shape = RoundedCornerShape(16.dp)) {

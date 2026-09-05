@@ -17,11 +17,29 @@ import com.example.shiftsync.AppSettings
 import com.example.shiftsync.ui.theme.*
 
 @Composable
-fun WorkplaceScreen(settings: AppSettings, onOpenMap: () -> Unit, onNavigate: (NavItem) -> Unit) {
+fun WorkplaceScreen(settings: AppSettings, onOpenMap: () -> Unit, onToggleGeofencing: (Boolean) -> Unit, onNavigate: (NavItem) -> Unit) {
     AppScaffold(bottomNav = NavItem.Workplace, onNavigate = onNavigate) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Workplace", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 30.sp, color = AppText)
-            AppCard { SimpleRow(Icons.Default.LocationSearching, TextSecondary, if (settings.workplaceSet) settings.workplaceLabel else "No workplace set", if (settings.workplaceSet) "Tap below to update your workplace location" else "Tap below to set your workplace location", onClick = onOpenMap); HorizontalDivider(color = BorderColor); Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { SimpleRow(Icons.Default.WifiTethering, ShiftBlue, "Auto-Geofencing", if (settings.workplaceSet) "Enabled when you arrive or leave work" else "Needs location permission", trailing = { Switch(checked = settings.autoGeofencingEnabled, onCheckedChange = null) }) } }
+            AppCard {
+                SimpleRow(Icons.Default.LocationSearching, TextSecondary, if (settings.workplaceSet) settings.workplaceLabel else "No workplace set", if (settings.workplaceSet) "Tap below to update your workplace location" else "Tap below to set your workplace location", onClick = onOpenMap)
+                HorizontalDivider(color = BorderColor)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    SimpleRow(
+                        Icons.Default.WifiTethering,
+                        ShiftBlue,
+                        "Auto-Geofencing",
+                        if (!settings.workplaceSet) "Set a workplace first" else if (settings.autoGeofencingEnabled) "Enabled when you arrive or leave work" else "Needs location permission",
+                        trailing = {
+                            Switch(
+                                checked = settings.autoGeofencingEnabled,
+                                onCheckedChange = onToggleGeofencing,
+                                enabled = settings.workplaceSet
+                            )
+                        }
+                    )
+                }
+            }
             Button(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().height(56.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp), colors = ButtonDefaults.buttonColors(containerColor = ShiftBlue)) { Icon(Icons.Default.Map, null, tint = androidx.compose.ui.graphics.Color.White); Spacer(Modifier.width(8.dp)); Text("Set Workplace on Map", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold) }
         }
     }

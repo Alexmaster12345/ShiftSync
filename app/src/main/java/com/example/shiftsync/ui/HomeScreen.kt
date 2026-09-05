@@ -32,7 +32,7 @@ import java.util.*
 fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotifications: () -> Unit, onNavigate: (NavItem) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    val entries by remember { mutableStateOf(loadEntries(prefs)) }
+    var entries by remember { mutableStateOf(loadEntries(prefs)) }
     var activeStartMillis by remember { mutableLongStateOf(prefs.getLong(KEY_ACTIVE_START_MILLIS, NO_ACTIVE_SHIFT)) }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(activeStartMillis) { while (activeStartMillis > 0L) { delay(1000); nowMillis = System.currentTimeMillis() } }
@@ -81,7 +81,7 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
                                 val settingsNow = loadSettings(prefs)
                                 val hourly = PayrollCalculator.hourlyRate(settingsNow)
                                 val entry = ShiftEntry(activeStartMillis, ShiftType.REGULAR, activeDurationMin, 0, hourly, PayrollCalculator.estimatePay(activeDurationMin, 0, hourly, ShiftType.REGULAR, settingsNow.overtimeEnabled, (settingsNow.overtimeDailyThresholdHours * 60).toLong(), settingsNow.overtimeMultiplier, settingsNow.workDayHours, settingsNow.salaryAmount))
-                                saveEntries(prefs, listOf(entry) + loadEntries(prefs)); prefs.edit().remove(KEY_ACTIVE_START_MILLIS).apply(); activeStartMillis = NO_ACTIVE_SHIFT; context.startClockService(ClockForegroundService.ACTION_STOP); ShiftAlertHelper.fireShiftEndAlert(context, activeDurationMin)
+                                saveEntries(prefs, listOf(entry) + loadEntries(prefs)); prefs.edit().remove(KEY_ACTIVE_START_MILLIS).apply(); activeStartMillis = NO_ACTIVE_SHIFT; entries = loadEntries(prefs); context.startClockService(ClockForegroundService.ACTION_STOP); ShiftAlertHelper.fireShiftEndAlert(context, activeDurationMin)
                             }
                         }, colors = ButtonDefaults.buttonColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth().height(54.dp)) { Text(if (activeStartMillis > 0L) "Clock Out" else "Clock In", color = ShiftBlue, fontWeight = FontWeight.Bold) }
                     }

@@ -40,6 +40,9 @@ private fun ShiftSyncRoot() {
     val refresh: () -> Unit = { settings = loadSettings(prefs) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        prefs.edit().putBoolean(KEY_AUTO_GEOFENCING, granted).apply(); refresh()
+    }
     LaunchedEffect(screen) {
         if (screen == Screen.HOME && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -67,7 +70,15 @@ private fun ShiftSyncRoot() {
                     NavItem.Home -> Screen.HOME; NavItem.Calendar -> Screen.CALENDAR; NavItem.Add -> Screen.MANUAL_ENTRY; NavItem.Workplace -> Screen.WORKPLACE; NavItem.Profile -> Screen.PROFILE
                 }
             })
-            Screen.WORKPLACE -> WorkplaceScreen(settings, onOpenMap = { screen = Screen.MAP_PICKER }, onNavigate = {
+            Screen.WORKPLACE -> WorkplaceScreen(settings, onOpenMap = { screen = Screen.MAP_PICKER }, onToggleGeofencing = { enable ->
+                if (!enable) {
+                    prefs.edit().putBoolean(KEY_AUTO_GEOFENCING, false).apply(); refresh()
+                } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    prefs.edit().putBoolean(KEY_AUTO_GEOFENCING, true).apply(); refresh()
+                } else {
+                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+            }, onNavigate = {
                 screen = when (it) {
                     NavItem.Home -> Screen.HOME; NavItem.Calendar -> Screen.CALENDAR; NavItem.Add -> Screen.MANUAL_ENTRY; NavItem.Workplace -> Screen.WORKPLACE; NavItem.Profile -> Screen.PROFILE
                 }

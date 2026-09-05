@@ -10,7 +10,7 @@ class PayrollCalculatorTest {
             totalDurationMinutes = 8 * 60L,
             unpaidBreakMinutes = 30,
             hourlyRate = 20.0,
-            shiftType = ShiftType.MORNING
+            shiftType = ShiftType.REGULAR
         )
 
         assertEquals(150.0, pay, 0.001)
@@ -22,7 +22,9 @@ class PayrollCalculatorTest {
             totalDurationMinutes = 10 * 60L,
             unpaidBreakMinutes = 0,
             hourlyRate = 20.0,
-            shiftType = ShiftType.NIGHT
+            shiftType = ShiftType.NIGHT,
+            overtimeEnabled = true,
+            overtimeThresholdMinutes = 8 * 60L
         )
 
         assertEquals(220.0, pay, 0.001)
