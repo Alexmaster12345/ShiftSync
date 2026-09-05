@@ -35,7 +35,7 @@ private fun ShiftSyncRoot() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var settings by remember { mutableStateOf(loadSettings(prefs)) }
-    var screen by remember { mutableStateOf(if (prefs.contains(KEY_DISPLAY_NAME)) Screen.HOME else Screen.LOGIN) }
+    var screen by remember { mutableStateOf(Screen.HOME) }
     var salaryCurrencyOrigin by remember { mutableStateOf(Screen.PROFILE) }
     val refresh: () -> Unit = { settings = loadSettings(prefs) }
 
