@@ -33,6 +33,7 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var entries by remember { mutableStateOf(loadEntries(prefs)) }
+    LaunchedEffect(Unit) { entries = loadEntries(prefs) }
     var activeStartMillis by remember { mutableLongStateOf(prefs.getLong(KEY_ACTIVE_START_MILLIS, NO_ACTIVE_SHIFT)) }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(activeStartMillis) { while (activeStartMillis > 0L) { delay(1000); nowMillis = System.currentTimeMillis() } }
@@ -40,10 +41,19 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
     val activeDurationMin = elapsed / 60
     val currency = settings.currencySymbol
     val greeting = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) { in 0..11 -> "Good morning"; in 12..17 -> "Good afternoon"; else -> "Good evening" }
-    val weekEntries = remember(entries) { entries.take(7) }
+    val weekEntries = entriesForWeek(entries, Calendar.getInstance())
+    val previousWeekEntries = entriesForWeek(entries, Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) })
     val monthEntries = entriesForMonth(entries, Calendar.getInstance().get(Calendar.YEAR), Calendar.getInstance().get(Calendar.MONTH))
     val weekMinutes = weekEntries.sumOf { it.durationMinutes }
+    val previousWeekMinutes = previousWeekEntries.sumOf { it.durationMinutes }
     val monthMinutes = monthEntries.sumOf { it.durationMinutes }
+    val weekDiffMinutes = weekMinutes - previousWeekMinutes
+    val weekDiffHours = String.format(Locale.getDefault(), "%.1f", kotlin.math.abs(weekDiffMinutes) / 60.0)
+    val weekComparisonText = when {
+        weekDiffMinutes > 0 -> "↑ ${weekDiffHours}h more than last week"
+        weekDiffMinutes < 0 -> "↓ ${weekDiffHours}h less than last week"
+        else -> "Same as last week"
+    }
     val estimatedPay = PayrollCalculator.estimatePay(activeDurationMin, 0, PayrollCalculator.hourlyRate(settings), ShiftType.REGULAR, settings.overtimeEnabled, (settings.overtimeDailyThresholdHours * 60).toLong(), settings.overtimeMultiplier, settings.workDayHours, settings.salaryAmount)
 
     AppScaffold(bottomNav = NavItem.Home, onNavigate = onNavigate) { padding ->
@@ -89,7 +99,7 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SummaryCard("This Week", Icons.Default.CalendarMonth, formatDuration(weekMinutes), "↑ 0.0h more than last week", GreenAccent, Modifier.weight(1f))
+                    SummaryCard("This Week", Icons.Default.CalendarMonth, formatDuration(weekMinutes), weekComparisonText, GreenAccent, Modifier.weight(1f))
                     SummaryCard("This Month", Icons.Default.GridView, formatDuration(monthMinutes), "${monthEntries.size} shifts total", TextSecondary, Modifier.weight(1f))
                 }
             }
@@ -98,6 +108,18 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
             if (entries.isEmpty()) item { AppCard { Text("No entries yet", fontWeight = FontWeight.SemiBold); Text("Use the + button to add your first shift.", color = TextSecondary) } }
         }
     }
+}
+
+private fun entriesForWeek(entries: List<ShiftEntry>, reference: Calendar): List<ShiftEntry> {
+    val weekStart = reference.clone() as Calendar
+    weekStart.set(Calendar.DAY_OF_WEEK, weekStart.firstDayOfWeek)
+    weekStart.set(Calendar.HOUR_OF_DAY, 0)
+    weekStart.set(Calendar.MINUTE, 0)
+    weekStart.set(Calendar.SECOND, 0)
+    weekStart.set(Calendar.MILLISECOND, 0)
+    val weekEnd = weekStart.clone() as Calendar
+    weekEnd.add(Calendar.DAY_OF_YEAR, 7)
+    return entries.filter { it.startedAtMillis >= weekStart.timeInMillis && it.startedAtMillis < weekEnd.timeInMillis }
 }
 
 @Composable private fun MiniStatBox(label: String, value: String, modifier: Modifier) = Surface(modifier = modifier, color = Color.White.copy(.16f), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(14.dp)) { Text(label, color = Color.White.copy(.75f), fontSize = 12.sp); Text(value, color = Color.White, fontWeight = FontWeight.Bold) } }
