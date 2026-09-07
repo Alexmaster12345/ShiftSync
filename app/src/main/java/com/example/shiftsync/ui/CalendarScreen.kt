@@ -42,7 +42,6 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
     var selectedDay by remember { mutableIntStateOf(today.get(Calendar.DAY_OF_MONTH)) }
     val monthNames = DateFormatSymbols().months.toList()
     val monthEntries = entriesForMonth(entries, year, month)
-    val selectedEntries = monthEntries.filter { Calendar.getInstance().apply { timeInMillis = it.startedAtMillis }.get(Calendar.DAY_OF_MONTH) == selectedDay }
     val grid = remember(month, year) {
         val cal = Calendar.getInstance().apply { set(year, month, 1) }
         val offset = cal.get(Calendar.DAY_OF_WEEK) - 1
@@ -94,15 +93,15 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
                     Text("${monthEntries.size} $shiftWord • ${formatDuration(monthEntries.sumOf { it.durationMinutes }).uppercase()}", color = TextSecondary, fontSize = 12.sp)
                 }
             }
-            if (selectedEntries.isEmpty()) {
+            if (monthEntries.isEmpty()) {
                 item {
                     AppCard {
-                        Text("No shifts on this day", fontWeight = FontWeight.SemiBold)
-                        Text("Pick another day or add a manual entry.", color = TextSecondary, fontSize = 13.sp)
+                        Text("No shifts this month", fontWeight = FontWeight.SemiBold)
+                        Text("Pick another month or add a manual entry.", color = TextSecondary, fontSize = 13.sp)
                     }
                 }
             }
-            items(selectedEntries) { entry ->
+            items(monthEntries.sortedByDescending { it.startedAtMillis }) { entry ->
                 AppCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(color = ShiftBlue.copy(.12f), shape = RoundedCornerShape(16.dp)) {
