@@ -58,7 +58,7 @@ fun ExportReportsScreen(settings: AppSettings, onBack: () -> Unit) {
 }
 
 @Composable
-fun SecurityPrivacyScreen(onBack: () -> Unit, onSalaryCurrency: () -> Unit, onCleared: () -> Unit) {
+fun SecurityPrivacyScreen(onBack: () -> Unit, onCleared: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var showConfirm by remember { mutableStateOf(false) }
@@ -67,7 +67,6 @@ fun SecurityPrivacyScreen(onBack: () -> Unit, onSalaryCurrency: () -> Unit, onCl
         Spacer(Modifier.height(8.dp)); HeaderWithBack("Security & Privacy", onBack)
         AppCard { SimpleRow(Icons.Default.Shield, ShiftBlue, "Data stored locally", "All shift data lives only on this device. Nothing is sent to external servers."); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.CheckCircle, GreenAccent, "No account required", "ShiftSync works without sign-up. Your data stays private and is never shared.") }
         AppCard { SimpleRow(Icons.Default.UploadFile, GreenAccent, "Export Backup (JSON)", "Save your shift records to transfer to a new device", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { shareJsonBackup(context, prefs) }); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.Download, ShiftBlue, "Import Backup", "Restore shift records from a previously exported file", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { picker.launch(arrayOf("application/json")) }) }
-        AppCard { SimpleRow(Icons.Default.Payments, ShiftBlue, "Salary & Currency", "Set your pay basis and preferred currency", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = onSalaryCurrency) }
         AppCard { SimpleRow(Icons.Default.Delete, RedAccent, "Clear All Data", "Deletes all shifts, settings, and profile info", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = RedAccent) }, onClick = { showConfirm = true }) }
         if (showConfirm) AlertDialog(onDismissRequest = { showConfirm = false }, confirmButton = { TextButton(onClick = { prefs.edit().clear().apply(); showConfirm = false; onCleared() }) { Text("Clear", color = RedAccent) } }, dismissButton = { TextButton({ showConfirm = false }) { Text("Cancel") } }, title = { Text("Clear all data?") }, text = { Text("This removes all shifts, settings, and profile information from this device.") })
     }
