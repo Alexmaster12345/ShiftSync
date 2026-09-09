@@ -1,5 +1,8 @@
 package com.example.shiftsync.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +20,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +78,10 @@ fun SplashScreen() {
 
 @Composable
 private fun ClockFace() {
+    val rotation = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        rotation.animateTo(360f, animationSpec = tween(durationMillis = 1800, easing = LinearEasing))
+    }
     Box(
         Modifier
             .size(188.dp)
@@ -89,14 +100,16 @@ private fun ClockFace() {
                 val inner = Offset(center.x + (radius - tickInset) * cos(angle).toFloat(), center.y + (radius - tickInset) * sin(angle).toFloat())
                 drawLine(color = Color(0xFFC9D6E8), start = inner, end = outer, strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
             }
-            // Hour hand pointing to 12
-            drawLine(
-                color = ShiftBlue,
-                start = center,
-                end = Offset(center.x, center.y - radius * 0.62f),
-                strokeWidth = 6.dp.toPx(),
-                cap = StrokeCap.Round
-            )
+            // Hour hand pointing to 12, rotating a full circle back to 12
+            rotate(degrees = rotation.value, pivot = center) {
+                drawLine(
+                    color = ShiftBlue,
+                    start = center,
+                    end = Offset(center.x, center.y - radius * 0.62f),
+                    strokeWidth = 6.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
             // Center dot
             drawCircle(color = ShiftBlue, radius = 5.dp.toPx(), center = center)
         }
