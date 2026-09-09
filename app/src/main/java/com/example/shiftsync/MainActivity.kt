@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Screen {
-    LOGIN, HOME, NOTIFICATIONS, MANUAL_ENTRY, CALENDAR, WORKPLACE, MAP_PICKER, PROFILE,
+    SPLASH, LOGIN, HOME, NOTIFICATIONS, MANUAL_ENTRY, CALENDAR, WORKPLACE, MAP_PICKER, PROFILE,
     APPEARANCE, NOTIFICATION_SETTINGS, PERSONAL_INFO, OVERTIME_RULES, EXPORT_REPORTS,
     SECURITY_PRIVACY, SALARY_CURRENCY, TERMS_OF_USE, PRIVACY_POLICY
 }
@@ -35,8 +35,9 @@ private fun ShiftSyncRoot() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var settings by remember { mutableStateOf(loadSettings(prefs)) }
-    var screen by remember { mutableStateOf(Screen.HOME) }
+    var screen by remember { mutableStateOf(Screen.SPLASH) }
     var salaryCurrencyOrigin by remember { mutableStateOf(Screen.PROFILE) }
+    var splashVisible by remember { mutableStateOf(true) }
     val refresh: () -> Unit = { settings = loadSettings(prefs) }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -50,7 +51,15 @@ private fun ShiftSyncRoot() {
     }
 
     ShiftSyncTheme(settings.appearance) {
-        when (screen) {
+        if (splashVisible) {
+            SplashScreen()
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(1800)
+                splashVisible = false
+                screen = Screen.HOME
+            }
+        } else when (screen) {
+            Screen.SPLASH -> SplashScreen()
             Screen.LOGIN -> LoginScreen { name ->
                 prefs.edit().putString(KEY_DISPLAY_NAME, name).apply(); refresh(); screen = Screen.HOME
             }
