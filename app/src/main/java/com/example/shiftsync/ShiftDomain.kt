@@ -39,6 +39,7 @@ data class AppSettings(
     val jobTitle: String = "Guest",
     val branch: String = "",
     val appearance: AppearanceMode = AppearanceMode.LIGHT,
+    val use24HourClock: Boolean = false,
     val arrivalDepartureAlerts: Boolean = true,
     val overtimeEnabled: Boolean = false,
     val overtimeDailyThresholdHours: Double = 8.5,
@@ -111,6 +112,7 @@ const val KEY_REMINDER_CLOCK_OUT_HOUR = "reminder_clock_out_hour"
 const val KEY_REMINDER_CLOCK_OUT_MINUTE = "reminder_clock_out_minute"
 const val KEY_REMINDER_CLOCK_OUT_DAYS = "reminder_clock_out_days"
 const val KEY_APPEARANCE = "appearance"
+const val KEY_USE_24_HOUR_CLOCK = "use_24_hour_clock"
 const val KEY_DISPLAY_NAME = "display_name"
 const val KEY_EMAIL = "email"
 const val KEY_JOB_TITLE = "job_title"
@@ -140,6 +142,7 @@ fun loadSettings(prefs: SharedPreferences): AppSettings = AppSettings(
     jobTitle = prefs.getString(KEY_JOB_TITLE, "Guest").orEmpty().ifBlank { "Guest" },
     branch = prefs.getString(KEY_BRANCH, "").orEmpty(),
     appearance = AppearanceMode.entries.firstOrNull { it.prefValue == prefs.getString(KEY_APPEARANCE, AppearanceMode.LIGHT.prefValue) } ?: AppearanceMode.LIGHT,
+    use24HourClock = prefs.getBoolean(KEY_USE_24_HOUR_CLOCK, false),
     arrivalDepartureAlerts = prefs.getBoolean(KEY_NOTIFY_SHIFT_START, true) || prefs.getBoolean(KEY_NOTIFY_SHIFT_END, true),
     overtimeEnabled = prefs.getBoolean(KEY_OVERTIME_ENABLED, false),
     overtimeDailyThresholdHours = prefs.getFloat(KEY_OVERTIME_DAILY_THRESHOLD_HOURS, 8.5f).toDouble(),
@@ -161,6 +164,8 @@ fun formatDate(epochMillis: Long): String = SimpleDateFormat("d MMM", Locale.get
 fun formatEntryDate(epochMillis: Long): String = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(epochMillis))
 fun formatTime(epochMillis: Long): String = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(epochMillis))
 fun formatTime12(epochMillis: Long): String = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(epochMillis))
+fun formatShiftTime(epochMillis: Long, use24HourClock: Boolean): String =
+    if (use24HourClock) formatTime(epochMillis) else formatTime12(epochMillis)
 
 fun formatDuration(totalMinutes: Long): String {
     val hours = totalMinutes / 60

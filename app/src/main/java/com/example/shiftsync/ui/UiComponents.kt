@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -107,9 +106,9 @@ fun BottomNavBar(selected: NavItem, onNavigate: (NavItem) -> Unit, modifier: Mod
                 listOf(NavItem.Home, NavItem.Calendar).forEach { item -> NavButton(item, selected == item, onNavigate) }
                 Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) {
                     Box(
-                        Modifier.size(54.dp).rotate(45f).clip(RoundedCornerShape(18.dp)).background(ShiftBlue).clickable { onNavigate(NavItem.Add) },
+                        Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(ShiftBlue).clickable { onNavigate(NavItem.Add) },
                         contentAlignment = Alignment.Center
-                    ) { Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.rotate(-45f)) }
+                    ) { Icon(Icons.Default.Add, null, tint = Color.White) }
                 }
                 listOf(NavItem.Workplace, NavItem.Profile).forEach { item -> NavButton(item, selected == item, onNavigate) }
             }

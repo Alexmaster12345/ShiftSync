@@ -42,6 +42,7 @@ fun ProfileScreen(settings: AppSettings, onNavigate: (NavItem) -> Unit, onOpen: 
             SettingsGroup("APP SETTINGS", listOf(Triple(Icons.Default.DarkMode, "Appearance", Screen.APPEARANCE), Triple(Icons.Default.Notifications, "Notifications", Screen.NOTIFICATION_SETTINGS), Triple(Icons.Default.Person, "Personal Info", Screen.PERSONAL_INFO)), ShiftBlue, onOpen)
             SettingsGroup("WORK RULES", listOf(Triple(Icons.Default.Schedule, "Overtime Rules", Screen.OVERTIME_RULES), Triple(Icons.Default.Description, "Export Reports", Screen.EXPORT_REPORTS)), GreenAccent, onOpen)
             SettingsGroup("SECURITY & PRIVACY", listOf(Triple(Icons.Default.Shield, "Security & Privacy", Screen.SECURITY_PRIVACY)), OrangeAccent, onOpen)
+            SettingsGroup("HELP", listOf(Triple(Icons.Default.MenuBook, "How to Use ShiftSync", Screen.HOW_TO_USE)), ShiftBlue, onOpen)
             SettingsGroup("LEGAL", listOf(Triple(Icons.Default.Gavel, "Terms of Use", Screen.TERMS_OF_USE), Triple(Icons.Default.Policy, "Privacy Policy", Screen.PRIVACY_POLICY)), TextSecondary, onOpen)
 
             SectionTitle("PAY SETTINGS")

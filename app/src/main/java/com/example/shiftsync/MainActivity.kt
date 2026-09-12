@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
 
 enum class Screen {
     SPLASH, LOGIN, HOME, NOTIFICATIONS, MANUAL_ENTRY, CALENDAR, WORKPLACE, MAP_PICKER, PROFILE,
-    APPEARANCE, NOTIFICATION_SETTINGS, PERSONAL_INFO, OVERTIME_RULES, EXPORT_REPORTS,
+    APPEARANCE, NOTIFICATION_SETTINGS, PERSONAL_INFO, OVERTIME_RULES, EXPORT_REPORTS, HOW_TO_USE,
     SECURITY_PRIVACY, SALARY_CURRENCY, TERMS_OF_USE, PRIVACY_POLICY
 }
 
@@ -105,6 +105,7 @@ private fun ShiftSyncRoot() {
             Screen.PERSONAL_INFO -> PersonalInfoScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
             Screen.OVERTIME_RULES -> OvertimeRulesScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
             Screen.EXPORT_REPORTS -> ExportReportsScreen(settings, onBack = { screen = Screen.PROFILE })
+            Screen.HOW_TO_USE -> HowToUseScreen(onBack = { screen = Screen.PROFILE })
             Screen.SECURITY_PRIVACY -> SecurityPrivacyScreen(
                 onBack = { screen = Screen.PROFILE },
                onCleared = { refresh(); screen = Screen.LOGIN }

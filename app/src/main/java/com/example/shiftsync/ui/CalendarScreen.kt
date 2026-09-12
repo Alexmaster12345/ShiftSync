@@ -35,6 +35,7 @@ import java.util.*
 fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    val settings = loadSettings(prefs)
     val entries = loadEntries(prefs)
     val today = Calendar.getInstance()
     var month by remember { mutableIntStateOf(today.get(Calendar.MONTH)) }
@@ -113,7 +114,7 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(entry.shiftType.label, fontWeight = FontWeight.Bold)
-                            Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatTime12(entry.startedAtMillis)} - ${formatTime12(entry.startedAtMillis + entry.durationMinutes * 60000)}", color = TextSecondary, fontSize = 13.sp)
+                            Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, settings.use24HourClock)} - ${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, settings.use24HourClock)}", color = TextSecondary, fontSize = 13.sp)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text(formatDuration(entry.durationMinutes), fontWeight = FontWeight.Bold)

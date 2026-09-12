@@ -53,7 +53,7 @@ fun ExportReportsScreen(settings: AppSettings, onBack: () -> Unit) {
         AppCard { SimpleRow(Icons.Default.TableChart, GreenAccent, "Export as CSV", "Open in Numbers, Excel, or any spreadsheet app", trailing = { Icon(Icons.Default.OpenInNew, null, tint = GreenAccent) }, onClick = { shareCsv(context, settings, filtered, period) }) }
         AppCard { SimpleRow(Icons.Default.PictureAsPdf, ShiftBlue, "Export as PDF", "Formatted report for payslips or records", trailing = { Icon(Icons.Default.OpenInNew, null, tint = ShiftBlue) }, onClick = { sharePdf(context, settings, filtered, period) }) }
         Text("PREVIEW", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        filtered.forEach { entry -> AppCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Column { Text(formatDate(entry.startedAtMillis), fontWeight = FontWeight.Bold); Text(entry.shiftType.label, color = TextSecondary); Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatTime(entry.startedAtMillis)}-${formatTime(entry.startedAtMillis + entry.durationMinutes * 60000)}", color = TextSecondary, fontSize = 12.sp) }; Text(formatCurrency(entry.estimatedPay, settings.currencySymbol), color = GreenAccent, fontWeight = FontWeight.Bold) } } }
+        filtered.forEach { entry -> AppCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Column { Text(formatDate(entry.startedAtMillis), fontWeight = FontWeight.Bold); Text(entry.shiftType.label, color = TextSecondary); Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, settings.use24HourClock)}-${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, settings.use24HourClock)}", color = TextSecondary, fontSize = 12.sp) }; Text(formatCurrency(entry.estimatedPay, settings.currencySymbol), color = GreenAccent, fontWeight = FontWeight.Bold) } } }
     }
 }
 
@@ -138,7 +138,7 @@ private fun shareCsv(context: Context, settings: AppSettings, entries: List<Shif
     val file = File(context.cacheDir, "shifts-${period.label.lowercase().replace(' ', '-')}.csv")
     file.writeText(buildString {
         appendLine("Date,Type,Start,End,Duration,Pay,Notes")
-        entries.forEach { appendLine("${formatEntryDate(it.startedAtMillis)},${it.shiftType.label},${formatTime(it.startedAtMillis)},${formatTime(it.startedAtMillis + it.durationMinutes * 60000)},${formatDuration(it.durationMinutes)},${formatCurrency(it.estimatedPay, settings.currencySymbol)},${it.notes.replace(',', ';')}") }
+        entries.forEach { appendLine("${formatEntryDate(it.startedAtMillis)},${it.shiftType.label},${formatShiftTime(it.startedAtMillis, settings.use24HourClock)},${formatShiftTime(it.startedAtMillis + it.durationMinutes * 60000, settings.use24HourClock)},${formatDuration(it.durationMinutes)},${formatCurrency(it.estimatedPay, settings.currencySymbol)},${it.notes.replace(',', ';')}") }
     })
     shareFile(context, file, "text/csv")
 }
