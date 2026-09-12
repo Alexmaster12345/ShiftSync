@@ -263,32 +263,44 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
             }
         }
 
-        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(28.dp)).background(Color(0xFF1B2A41)), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(28.dp)).background(Color(0xFF1B2A41))) {
             Canvas(Modifier.fillMaxSize()) {
                 drawRect(brush = Brush.linearGradient(listOf(Color(0xFF2C7DA0), Color(0xFF577590), Color(0xFF264653))))
+                for (i in 0..10) {
+                    drawLine(Color.White.copy(.12f), start = androidx.compose.ui.geometry.Offset(0f, size.height / 10 * i), end = androidx.compose.ui.geometry.Offset(size.width, size.height / 10 * i), strokeWidth = 2f)
+                }
                 for (i in 0..8) {
-                    drawLine(Color.White.copy(.12f), start = androidx.compose.ui.geometry.Offset(0f, size.height / 8 * i), end = androidx.compose.ui.geometry.Offset(size.width, size.height / 8 * i), strokeWidth = 2f)
+                    drawLine(Color.White.copy(.08f), start = androidx.compose.ui.geometry.Offset(size.width / 8 * i, 0f), end = androidx.compose.ui.geometry.Offset(size.width / 8 * i, size.height), strokeWidth = 2f)
                 }
-                for (i in 0..6) {
-                    drawLine(Color.White.copy(.08f), start = androidx.compose.ui.geometry.Offset(size.width / 6 * i, 0f), end = androidx.compose.ui.geometry.Offset(size.width / 6 * i, size.height), strokeWidth = 2f)
-                }
+                drawPath(
+                    path = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(0f, size.height * 0.72f)
+                        cubicTo(size.width * 0.2f, size.height * 0.56f, size.width * 0.4f, size.height * 0.85f, size.width * 0.6f, size.height * 0.62f)
+                        cubicTo(size.width * 0.8f, size.height * 0.42f, size.width * 0.92f, size.height * 0.8f, size.width, size.height * 0.7f)
+                        lineTo(size.width, size.height)
+                        lineTo(0f, size.height)
+                        close()
+                    },
+                    color = Color.White.copy(alpha = 0.12f)
+                )
                 drawCircle(color = Color(0xFF8ED7FF).copy(alpha = 0.18f), radius = size.minDimension * 0.18f, center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.42f))
                 drawCircle(color = Color(0xFF8ED7FF).copy(alpha = 0.1f), radius = size.minDimension * 0.28f, center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.42f))
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.size(46.dp).clip(RoundedCornerShape(20.dp)).background(ShiftBlue), contentAlignment = Alignment.Center) {
-                    if (isLocating) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp) else Icon(Icons.Default.LocationOn, null, tint = Color.White)
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Box(Modifier.size(52.dp).clip(RoundedCornerShape(20.dp)).background(ShiftBlue), contentAlignment = Alignment.Center) {
+                    if (isLocating) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp) else Icon(Icons.Default.LocationOn, null, tint = Color.White)
                 }
                 if (resultLat != null && resultLng != null) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     Text(resultLabel ?: "Pinned workplace", color = Color.White, fontWeight = FontWeight.SemiBold)
                     Text(String.format(Locale.US, "%.4f, %.4f", resultLat, resultLng), color = Color.White.copy(.7f), fontSize = 12.sp)
                 }
                 if (errorText != null) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     Text(errorText.orEmpty(), color = Color(0xFFFF8A8A), fontSize = 13.sp)
                 }
             }
+            Text("Map Preview", color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.TopStart).padding(14.dp))
         }
 
         Surface(color = DarkSheetCard, shape = RoundedCornerShape(24.dp)) {
