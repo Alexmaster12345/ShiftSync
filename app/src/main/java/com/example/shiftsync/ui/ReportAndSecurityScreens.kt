@@ -26,20 +26,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
 import com.example.shiftsync.*
 import com.example.shiftsync.ui.theme.*
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.rememberCameraPositionState
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.delay
+import org.osmdroid.config.Configuration
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 
 private enum class ReportPeriod(val label: String) { WEEK("This Week"), MONTH("This Month"), YEAR("This Year"), ALL("All Time") }
 
@@ -271,37 +269,37 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
 
         val selectedLat = resultLat
         val selectedLng = resultLng
-        val mapTarget = remember(selectedLat, selectedLng) {
-            if (selectedLat != null && selectedLng != null) LatLng(selectedLat, selectedLng) else LatLng(32.0853, 34.7818)
-        }
-        val cameraPositionState = rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(mapTarget, 12f)
-        }
-
-        LaunchedEffect(selectedLat, selectedLng) {
-            val lat = selectedLat ?: 32.0853
-            val lng = selectedLng ?: 34.7818
-            cameraPositionState.animate(
-                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 12f),
-                500
-            )
-        }
+        val defaultLat = 32.0853
+        val defaultLng = 34.7818
+        val centerLat = selectedLat ?: defaultLat
+        val centerLng = selectedLng ?: defaultLng
+        val mapCenter = GeoPoint(centerLat, centerLng)
 
         Box(Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(28.dp))) {
-            GoogleMap(
+            AndroidView(
                 modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                properties = MapProperties(isMyLocationEnabled = false),
-                uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
-            ) {
-                if (selectedLat != null && selectedLng != null) {
-                    Marker(
-                        state = com.google.maps.android.compose.MarkerState(position = LatLng(selectedLat, selectedLng)),
-                        title = resultLabel ?: "Workplace",
-                        snippet = String.format(Locale.US, "%.4f, %.4f", selectedLat, selectedLng)
-                    )
+                factory = { context ->
+                    Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
+                    MapView(context).apply {
+                        setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
+                        setMultiTouchControls(true)
+                        setBuiltInZoomControls(true)
+                        controller.setZoom(12.0)
+                        controller.setCenter(mapCenter)
+                    }
+                },
+                update = { mapView ->
+                    mapView.controller.setZoom(12.0)
+                    mapView.controller.animateTo(mapCenter)
+                    mapView.overlays.clear()
+                    val marker = Marker(mapView)
+                    marker.position = mapCenter
+                    marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    marker.title = resultLabel ?: "Workplace"
+                    mapView.overlays.add(marker)
+                    mapView.invalidate()
                 }
-            }
+            )
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 if (resultLat == null || resultLng == null) {
                     Box(Modifier.size(52.dp).clip(RoundedCornerShape(20.dp)).background(ShiftBlue), contentAlignment = Alignment.Center) {
@@ -318,7 +316,7 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     Text(errorText.orEmpty(), color = Color(0xFFFF8A8A), fontSize = 13.sp)
                 }
             }
-            Text("Google Map", color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.TopStart).padding(14.dp).background(Color.Black.copy(alpha = 0.25f), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp))
+            Text("OpenStreetMap", color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.TopStart).padding(14.dp).background(Color.Black.copy(alpha = 0.25f), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp))
         }
 
         Surface(color = DarkSheetCard, shape = RoundedCornerShape(24.dp)) {
