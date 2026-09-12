@@ -54,7 +54,10 @@ data class AppSettings(
     val autoGeofencingEnabled: Boolean = false,
     val workplaceLat: Double = 0.0,
     val workplaceLng: Double = 0.0,
-    val vacationDaysPerYear: Int = 16
+    val vacationDaysPerYear: Int = 16,
+    val workFromHomeEnabled: Boolean = false,
+    val officeDays: Set<String> = DEFAULT_REMINDER_DAYS,
+    val homeDays: Set<String> = emptySet()
 )
 
 object PayrollCalculator {
@@ -131,6 +134,9 @@ const val KEY_WORKPLACE_LAT = "workplace_lat"
 const val KEY_WORKPLACE_LNG = "workplace_lng"
 const val KEY_AUTO_GEOFENCING = "auto_geofencing"
 const val KEY_VACATION_DAYS_PER_YEAR = "vacation_days_per_year"
+const val KEY_WORK_FROM_HOME_ENABLED = "work_from_home_enabled"
+const val KEY_OFFICE_DAYS = "office_days"
+const val KEY_HOME_DAYS = "home_days"
 
 val DEFAULT_REMINDER_DAYS: Set<String> = setOf("2", "3", "4", "5", "6")
 private const val ENTRY_DELIMITER = ";"
@@ -157,7 +163,16 @@ fun loadSettings(prefs: SharedPreferences): AppSettings = AppSettings(
     autoGeofencingEnabled = prefs.getBoolean(KEY_AUTO_GEOFENCING, false),
     workplaceLat = prefs.getString(KEY_WORKPLACE_LAT, "0.0")?.toDoubleOrNull() ?: 0.0,
     workplaceLng = prefs.getString(KEY_WORKPLACE_LNG, "0.0")?.toDoubleOrNull() ?: 0.0,
-    vacationDaysPerYear = prefs.getInt(KEY_VACATION_DAYS_PER_YEAR, 16)
+    vacationDaysPerYear = prefs.getInt(KEY_VACATION_DAYS_PER_YEAR, 16),
+    workFromHomeEnabled = prefs.getBoolean(
+        KEY_WORK_FROM_HOME_ENABLED,
+        prefs.getBoolean(KEY_REMINDER_CLOCK_IN_ENABLED, false) || prefs.getBoolean(KEY_REMINDER_CLOCK_OUT_ENABLED, false)
+    ),
+    officeDays = prefs.getStringSet(KEY_OFFICE_DAYS, DEFAULT_REMINDER_DAYS)?.toSet() ?: DEFAULT_REMINDER_DAYS,
+    homeDays = prefs.getStringSet(
+        KEY_HOME_DAYS,
+        if (prefs.contains(KEY_HOME_DAYS)) emptySet() else prefs.getStringSet(KEY_REMINDER_CLOCK_IN_DAYS, DEFAULT_REMINDER_DAYS)?.toSet() ?: emptySet()
+    )?.toSet() ?: emptySet()
 )
 
 fun formatDate(epochMillis: Long): String = SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(epochMillis))
@@ -166,6 +181,24 @@ fun formatTime(epochMillis: Long): String = SimpleDateFormat("HH:mm", Locale.get
 fun formatTime12(epochMillis: Long): String = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(epochMillis))
 fun formatShiftTime(epochMillis: Long, use24HourClock: Boolean): String =
     if (use24HourClock) formatTime(epochMillis) else formatTime12(epochMillis)
+
+private val WEEKDAY_ORDER = listOf("2", "3", "4", "5", "6", "7", "1")
+private val WEEKDAY_LABELS = mapOf(
+    "1" to "Sun",
+    "2" to "Mon",
+    "3" to "Tue",
+    "4" to "Wed",
+    "5" to "Thu",
+    "6" to "Fri",
+    "7" to "Sat"
+)
+
+fun daysLabel(days: Set<String>): String {
+    if (days.isEmpty()) return "No days selected"
+    if (days.size == 7) return "Every day"
+    if (days == DEFAULT_REMINDER_DAYS) return "Weekdays (Mon–Fri)"
+    return WEEKDAY_ORDER.filter { it in days }.joinToString(", ") { WEEKDAY_LABELS.getValue(it) }
+}
 
 fun formatDuration(totalMinutes: Long): String {
     val hours = totalMinutes / 60

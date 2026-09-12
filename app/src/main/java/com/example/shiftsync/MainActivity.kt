@@ -101,7 +101,7 @@ private fun ShiftSyncRoot() {
                 prefs.edit().remove(KEY_DISPLAY_NAME).apply(); refresh(); screen = Screen.LOGIN
             })
             Screen.APPEARANCE -> AppearanceScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
-            Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(onBack = { refresh(); screen = Screen.PROFILE })
+            Screen.NOTIFICATION_SETTINGS -> NotificationSettingsScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
             Screen.PERSONAL_INFO -> PersonalInfoScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
             Screen.OVERTIME_RULES -> OvertimeRulesScreen(settings, onBack = { refresh(); screen = Screen.PROFILE }, onSaved = refresh)
             Screen.EXPORT_REPORTS -> ExportReportsScreen(settings, onBack = { screen = Screen.PROFILE })
