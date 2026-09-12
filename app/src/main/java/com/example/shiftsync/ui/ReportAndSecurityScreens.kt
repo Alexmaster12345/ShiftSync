@@ -148,11 +148,24 @@ fun SalaryCurrencyScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () 
 fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    var searchQuery by remember { mutableStateOf("") }
     var isLocating by remember { mutableStateOf(false) }
     var resultLabel by remember { mutableStateOf<String?>(null) }
     var resultLat by remember { mutableStateOf<Double?>(null) }
     var resultLng by remember { mutableStateOf<Double?>(null) }
     var errorText by remember { mutableStateOf<String?>(null) }
+
+    fun setResolvedLocation(lat: Double, lng: Double, label: String? = null) {
+        resultLat = lat
+        resultLng = lng
+        resultLabel = label ?: runCatching {
+            val geocoder = android.location.Geocoder(context, Locale.getDefault())
+            @Suppress("DEPRECATION")
+            geocoder.getFromLocation(lat, lng, 1)?.firstOrNull()?.let { addr ->
+                listOfNotNull(addr.thoroughfare, addr.locality ?: addr.subAdminArea).joinToString(", ").ifBlank { null }
+            }
+        }.getOrNull() ?: "Pinned workplace"
+    }
 
     fun resolveLocation() {
         isLocating = true
@@ -173,19 +186,38 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
         try {
             locationManager.requestSingleUpdate(provider, { location ->
                 isLocating = false
-                resultLat = location.latitude
-                resultLng = location.longitude
-                resultLabel = runCatching {
-                    val geocoder = android.location.Geocoder(context, Locale.getDefault())
-                    @Suppress("DEPRECATION")
-                    geocoder.getFromLocation(location.latitude, location.longitude, 1)?.firstOrNull()?.let { addr ->
-                        listOfNotNull(addr.thoroughfare, addr.locality ?: addr.subAdminArea).joinToString(", ").ifBlank { null }
-                    }
-                }.getOrNull() ?: "Pinned workplace"
+                setResolvedLocation(location.latitude, location.longitude)
             }, context.mainLooper)
         } catch (e: SecurityException) {
             isLocating = false
             errorText = "Location permission is required."
+        }
+    }
+
+    fun searchAddress() {
+        val query = searchQuery.trim()
+        if (query.isEmpty()) {
+            errorText = "Enter an address or place name to search."
+            return
+        }
+        isLocating = true
+        errorText = null
+        try {
+            val geocoder = android.location.Geocoder(context, Locale.getDefault())
+            @Suppress("DEPRECATION")
+            val matches = geocoder.getFromLocationName(query, 1)
+            if (matches.isNullOrEmpty()) {
+                isLocating = false
+                errorText = "No matching address was found. Try a broader place name."
+                return
+            }
+            val match = matches.first()
+            isLocating = false
+            val resolvedLabel = listOfNotNull(match.featureName, match.locality ?: match.subAdminArea, match.countryName).joinToString(", ").ifBlank { query }
+            setResolvedLocation(match.latitude, match.longitude, resolvedLabel)
+        } catch (e: Exception) {
+            isLocating = false
+            errorText = "Search failed. Try another address or use Current Location."
         }
     }
 
@@ -194,9 +226,55 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().background(DarkSheet).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("Cancel", color = ShiftBlue) }; Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Text("Pick Workplace", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) }; Spacer(Modifier.width(60.dp)) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack) { Text("Cancel", color = ShiftBlue) }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Text("Pick Workplace", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
+            Spacer(Modifier.width(60.dp))
+        }
+
+        Surface(color = DarkSheetCard, shape = RoundedCornerShape(20.dp), tonalElevation = 0.dp) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted)
+                Spacer(Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search address or workplace") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        cursorColor = ShiftBlue
+                    ),
+                    trailingIcon = {
+                        TextButton(onClick = { searchAddress() }, enabled = !isLocating) {
+                            Text("Search", color = ShiftBlue, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+            }
+        }
+
         Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(28.dp)).background(Color(0xFF1B2A41)), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) { drawRect(brush = Brush.linearGradient(listOf(Color(0xFF2C7DA0), Color(0xFF577590), Color(0xFF264653)))); for (i in 0..8) drawLine(Color.White.copy(.12f), start = androidx.compose.ui.geometry.Offset(0f, size.height / 8 * i), end = androidx.compose.ui.geometry.Offset(size.width, size.height / 8 * i), strokeWidth = 2f); for (i in 0..6) drawLine(Color.White.copy(.08f), start = androidx.compose.ui.geometry.Offset(size.width / 6 * i, 0f), end = androidx.compose.ui.geometry.Offset(size.width / 6 * i, size.height), strokeWidth = 2f) }
+            Canvas(Modifier.fillMaxSize()) {
+                drawRect(brush = Brush.linearGradient(listOf(Color(0xFF2C7DA0), Color(0xFF577590), Color(0xFF264653))))
+                for (i in 0..8) {
+                    drawLine(Color.White.copy(.12f), start = androidx.compose.ui.geometry.Offset(0f, size.height / 8 * i), end = androidx.compose.ui.geometry.Offset(size.width, size.height / 8 * i), strokeWidth = 2f)
+                }
+                for (i in 0..6) {
+                    drawLine(Color.White.copy(.08f), start = androidx.compose.ui.geometry.Offset(size.width / 6 * i, 0f), end = androidx.compose.ui.geometry.Offset(size.width / 6 * i, size.height), strokeWidth = 2f)
+                }
+                drawCircle(color = Color(0xFF8ED7FF).copy(alpha = 0.18f), radius = size.minDimension * 0.18f, center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.42f))
+                drawCircle(color = Color(0xFF8ED7FF).copy(alpha = 0.1f), radius = size.minDimension * 0.28f, center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.42f))
+            }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.size(46.dp).clip(RoundedCornerShape(20.dp)).background(ShiftBlue), contentAlignment = Alignment.Center) {
                     if (isLocating) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp) else Icon(Icons.Default.LocationOn, null, tint = Color.White)
@@ -212,11 +290,12 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                 }
             }
         }
+
         Surface(color = DarkSheetCard, shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.width(50.dp).height(5.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(.15f)))
                 Spacer(Modifier.height(16.dp))
-                Text("Uses your device's GPS to pin your current location as your workplace.", color = Color.White.copy(.8f), fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
+                Text("Search by address, or use your current GPS location for the workplace pin.", color = Color.White.copy(.8f), fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = {
