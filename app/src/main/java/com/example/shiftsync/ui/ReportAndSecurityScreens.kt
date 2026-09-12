@@ -148,14 +148,109 @@ fun SalaryCurrencyScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () 
 fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    var isLocating by remember { mutableStateOf(false) }
+    var resultLabel by remember { mutableStateOf<String?>(null) }
+    var resultLat by remember { mutableStateOf<Double?>(null) }
+    var resultLng by remember { mutableStateOf<Double?>(null) }
+    var errorText by remember { mutableStateOf<String?>(null) }
+
+    fun resolveLocation() {
+        isLocating = true
+        errorText = null
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
+        val provider = locationManager?.let {
+            when {
+                it.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) -> android.location.LocationManager.GPS_PROVIDER
+                it.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER) -> android.location.LocationManager.NETWORK_PROVIDER
+                else -> null
+            }
+        }
+        if (locationManager == null || provider == null) {
+            isLocating = false
+            errorText = "Location services are unavailable. Enable GPS and try again."
+            return
+        }
+        try {
+            locationManager.requestSingleUpdate(provider, { location ->
+                isLocating = false
+                resultLat = location.latitude
+                resultLng = location.longitude
+                resultLabel = runCatching {
+                    val geocoder = android.location.Geocoder(context, Locale.getDefault())
+                    @Suppress("DEPRECATION")
+                    geocoder.getFromLocation(location.latitude, location.longitude, 1)?.firstOrNull()?.let { addr ->
+                        listOfNotNull(addr.thoroughfare, addr.locality ?: addr.subAdminArea).joinToString(", ").ifBlank { null }
+                    }
+                }.getOrNull() ?: "Pinned workplace"
+            }, context.mainLooper)
+        } catch (e: SecurityException) {
+            isLocating = false
+            errorText = "Location permission is required."
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) resolveLocation() else errorText = "Location permission denied."
+    }
+
     Column(Modifier.fillMaxSize().background(DarkSheet).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("Cancel", color = ShiftBlue) }; Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Text("Pick Workplace", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) }; Spacer(Modifier.width(60.dp)) }
-        Surface(color = DarkSheetCard, shape = RoundedCornerShape(18.dp)) { Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Search, null, tint = Color.White.copy(.6f)); Spacer(Modifier.width(8.dp)); Text("Search address...", color = Color.White.copy(.6f)) } }
-        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(28.dp)).background(Color(0xFF1B2A41)).clickable { prefs.edit().putBoolean(KEY_WORKPLACE_SET, true).putString(KEY_WORKPLACE_LABEL, "Pinned workplace • 32.0853, 34.7818").putString(KEY_WORKPLACE_LAT, "32.0853").putString(KEY_WORKPLACE_LNG, "34.7818").apply(); onSaved() }) {
+        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(28.dp)).background(Color(0xFF1B2A41)), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) { drawRect(brush = Brush.linearGradient(listOf(Color(0xFF2C7DA0), Color(0xFF577590), Color(0xFF264653)))); for (i in 0..8) drawLine(Color.White.copy(.12f), start = androidx.compose.ui.geometry.Offset(0f, size.height / 8 * i), end = androidx.compose.ui.geometry.Offset(size.width, size.height / 8 * i), strokeWidth = 2f); for (i in 0..6) drawLine(Color.White.copy(.08f), start = androidx.compose.ui.geometry.Offset(size.width / 6 * i, 0f), end = androidx.compose.ui.geometry.Offset(size.width / 6 * i, size.height), strokeWidth = 2f) }
-            Box(Modifier.align(Alignment.Center).size(46.dp).clip(RoundedCornerShape(20.dp)).background(ShiftBlue), contentAlignment = Alignment.Center) { Icon(Icons.Default.LocationOn, null, tint = Color.White) }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.size(46.dp).clip(RoundedCornerShape(20.dp)).background(ShiftBlue), contentAlignment = Alignment.Center) {
+                    if (isLocating) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp) else Icon(Icons.Default.LocationOn, null, tint = Color.White)
+                }
+                if (resultLat != null && resultLng != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(resultLabel ?: "Pinned workplace", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text(String.format(Locale.US, "%.4f, %.4f", resultLat, resultLng), color = Color.White.copy(.7f), fontSize = 12.sp)
+                }
+                if (errorText != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(errorText.orEmpty(), color = Color(0xFFFF8A8A), fontSize = 13.sp)
+                }
+            }
         }
-        Surface(color = DarkSheetCard, shape = RoundedCornerShape(24.dp)) { Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) { Box(Modifier.width(50.dp).height(5.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(.15f))); Spacer(Modifier.height(16.dp)); Icon(Icons.Default.TouchApp, null, tint = Color.White); Spacer(Modifier.height(8.dp)); Text("Tap anywhere on the map to pin your workplace", color = Color.White) } }
+        Surface(color = DarkSheetCard, shape = RoundedCornerShape(24.dp)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.width(50.dp).height(5.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(.15f)))
+                Spacer(Modifier.height(16.dp))
+                Text("Uses your device's GPS to pin your current location as your workplace.", color = Color.White.copy(.8f), fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val granted = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (granted) resolveLocation() else permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ShiftBlue),
+                    enabled = !isLocating
+                ) {
+                    Icon(Icons.Default.MyLocation, null, tint = Color.White)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (isLocating) "Locating…" else "Use Current Location", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                if (resultLat != null && resultLng != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            prefs.edit()
+                                .putBoolean(KEY_WORKPLACE_SET, true)
+                                .putString(KEY_WORKPLACE_LABEL, resultLabel ?: "Pinned workplace")
+                                .putString(KEY_WORKPLACE_LAT, resultLat.toString())
+                                .putString(KEY_WORKPLACE_LNG, resultLng.toString())
+                                .apply()
+                            onSaved()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(26.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenAccent)
+                    ) { Text("Save This Location", color = Color.White, fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
     }
 }
 
