@@ -33,6 +33,7 @@ import com.example.shiftsync.ui.theme.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.delay
 
 private enum class ReportPeriod(val label: String) { WEEK("This Week"), MONTH("This Month"), YEAR("This Year"), ALL("All Time") }
 
@@ -80,13 +81,24 @@ fun SalaryCurrencyScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () 
     var paymentType by remember { mutableStateOf(settings.paymentType) }
     var salary by remember { mutableStateOf(settings.salaryAmount.toString()) }
     var workday by remember { mutableDoubleStateOf(settings.workDayHours) }
+    var saved by remember { mutableStateOf(false) }
     fun persist() { prefs.edit().putString(KEY_CURRENCY_SYMBOL, currency).putString(KEY_PAYMENT_TYPE, paymentType.prefValue).putString(KEY_SALARY_AMOUNT, salary).putFloat(KEY_WORK_DAY_HOURS, workday.toFloat()).apply(); onSaved() }
+    LaunchedEffect(saved) {
+        if (saved) {
+            delay(1000)
+            saved = false
+        }
+    }
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(8.dp)); HeaderWithBack("Salary & Currency", onBack)
         Text("CURRENCY", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        AppCard { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { listOf("$" to "Dollar", "₪" to "Shekel", "€" to "Euro").forEach { (symbol, label) -> SegmentedOption("$symbol $label", currency == symbol, { currency = symbol; persist() }, Modifier.weight(1f)) } } }
+        AppCard { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { listOf("$" to "Dollar", "₪" to "Shekel", "€" to "Euro").forEach { (symbol, label) -> SegmentedOption("$symbol $label", currency == symbol, { currency = symbol }, Modifier.weight(1f)) } } }
         Text("PAY RATE", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        AppCard { SimpleRow(Icons.Default.DateRange, ShiftBlue, "Payment Type", paymentType.name.lowercase().replaceFirstChar { it.uppercase() }, trailing = { Text(paymentType.name.lowercase().replaceFirstChar { it.uppercase() } + " ⌄", color = ShiftBlue, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { paymentType = if (paymentType == PaymentType.MONTHLY) PaymentType.HOURLY else PaymentType.MONTHLY; persist() }) }); HorizontalDivider(color = BorderColor); Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.AttachMoney, tint = ShiftBlue, contentDescription = null); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(if (paymentType == PaymentType.MONTHLY) "Monthly Salary" else "Hourly Rate", color = TextSecondary, fontSize = 12.sp); OutlinedTextField(value = salary, onValueChange = { salary = it; persist() }, prefix = { Text(currency) }, colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = CardBackground, unfocusedContainerColor = CardBackground, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent)) } }; HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.Schedule, GreenAccent, "Work Day Hours", "Used for day-off pay calculation", trailing = { Stepper("${workday}h", { workday = (workday - 0.5).coerceAtLeast(1.0); persist() }, { workday += 0.5; persist() }, GreenAccent) }) }
+        AppCard { SimpleRow(Icons.Default.DateRange, ShiftBlue, "Payment Type", paymentType.name.lowercase().replaceFirstChar { it.uppercase() }, trailing = { Text(paymentType.name.lowercase().replaceFirstChar { it.uppercase() } + " ⌄", color = ShiftBlue, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { paymentType = if (paymentType == PaymentType.MONTHLY) PaymentType.HOURLY else PaymentType.MONTHLY }) }); HorizontalDivider(color = BorderColor); Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.AttachMoney, tint = ShiftBlue, contentDescription = null); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(if (paymentType == PaymentType.MONTHLY) "Monthly Salary" else "Hourly Rate", color = TextSecondary, fontSize = 12.sp); OutlinedTextField(value = salary, onValueChange = { salary = it }, prefix = { Text(currency) }, colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = CardBackground, unfocusedContainerColor = CardBackground, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent)) } }; HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.Schedule, GreenAccent, "Work Day Hours", "Used for day-off pay calculation", trailing = { Stepper("${workday}h", { workday = (workday - 0.5).coerceAtLeast(1.0) }, { workday += 0.5 }, GreenAccent) }) }
+        SaveChangesButton(saved = saved) {
+            persist()
+            saved = true
+        }
     }
 }
 
