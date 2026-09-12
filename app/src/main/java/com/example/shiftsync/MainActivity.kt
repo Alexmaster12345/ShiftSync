@@ -40,13 +40,23 @@ private fun ShiftSyncRoot() {
     var splashVisible by remember { mutableStateOf(true) }
     val refresh: () -> Unit = { settings = loadSettings(prefs) }
 
+    val appPermissionsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         prefs.edit().putBoolean(KEY_AUTO_GEOFENCING, granted).apply(); refresh()
     }
     LaunchedEffect(screen) {
-        if (screen == Screen.HOME && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        if (screen == Screen.HOME) {
+            val missingPermissions = mutableListOf<String>()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                missingPermissions += Manifest.permission.POST_NOTIFICATIONS
+            }
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                missingPermissions += Manifest.permission.ACCESS_FINE_LOCATION
+            }
+            if (missingPermissions.isNotEmpty()) {
+                appPermissionsLauncher.launch(missingPermissions.toTypedArray())
+            }
         }
     }
 
