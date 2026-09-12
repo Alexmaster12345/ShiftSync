@@ -96,9 +96,9 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
             }
             if (monthEntries.isEmpty()) {
                 item {
-                    AppCard {
+                    AppCard(Modifier.fillMaxWidth()) {
                         Text("No shifts this month", fontWeight = FontWeight.SemiBold)
-                        Text("Pick another month or add a manual entry.", color = TextSecondary, fontSize = 13.sp)
+                        Text("Pick another month or add a manual entry.", color = TextSecondary, fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }

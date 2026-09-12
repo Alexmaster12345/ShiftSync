@@ -28,45 +28,45 @@ data class Dimens(
     val scaleFactor: Float,
 
     // ── Spacing ───────────────────────────────────────────────────
-    val spaceXSmall: Dp,      // 4dp baseline
-    val spaceSmall: Dp,       // 8dp baseline
-    val spaceMedium: Dp,      // 16dp baseline
-    val spaceLarge: Dp,       // 20dp baseline
-    val spaceXLarge: Dp,      // 24dp baseline
-    val spaceXXLarge: Dp,     // 32dp baseline
+    val spaceXSmall: Dp,      // 3dp baseline
+    val spaceSmall: Dp,       // 6dp baseline
+    val spaceMedium: Dp,      // 12dp baseline
+    val spaceLarge: Dp,       // 16dp baseline
+    val spaceXLarge: Dp,      // 20dp baseline
+    val spaceXXLarge: Dp,     // 28dp baseline
 
     // ── Horizontal padding ────────────────────────────────────────
-    val screenPadding: Dp,    // 20dp baseline
+    val screenPadding: Dp,    // 16dp baseline
 
     // ── Component sizes ───────────────────────────────────────────
-    val iconSmall: Dp,        // 16dp baseline
-    val iconMedium: Dp,       // 20dp baseline
-    val iconLarge: Dp,        // 24dp baseline
-    val iconXLarge: Dp,       // 32dp baseline
-    val avatarSmall: Dp,      // 40dp baseline
-    val avatarLarge: Dp,      // 90dp baseline
-    val buttonHeight: Dp,     // 50dp baseline
-    val cardRadius: Dp,       // 16dp baseline
+    val iconSmall: Dp,        // 14dp baseline
+    val iconMedium: Dp,       // 18dp baseline
+    val iconLarge: Dp,        // 22dp baseline
+    val iconXLarge: Dp,       // 28dp baseline
+    val avatarSmall: Dp,      // 34dp baseline
+    val avatarLarge: Dp,      // 78dp baseline
+    val buttonHeight: Dp,     // 44dp baseline
+    val cardRadius: Dp,       // 14dp baseline
 
     // ── Font sizes ────────────────────────────────────────────────
-    val fontCaption: TextUnit,    // 10sp baseline
-    val fontSmall: TextUnit,      // 12sp baseline
-    val fontBody: TextUnit,       // 14sp baseline
-    val fontButton: TextUnit,     // 16sp baseline
-    val fontTitle: TextUnit,      // 22sp baseline
-    val fontHeadline: TextUnit,   // 26sp baseline
-    val fontHero: TextUnit,       // 34sp baseline
+    val fontCaption: TextUnit,    // 9sp baseline
+    val fontSmall: TextUnit,      // 11sp baseline
+    val fontBody: TextUnit,       // 13sp baseline
+    val fontButton: TextUnit,     // 14sp baseline
+    val fontTitle: TextUnit,      // 20sp baseline
+    val fontHeadline: TextUnit,   // 24sp baseline
+    val fontHero: TextUnit,       // 30sp baseline
 
     // ── Week day strip ────────────────────────────────────────────
-    val weekDayLabelSize: TextUnit,  // 8sp baseline
-    val weekDayNumberSize: TextUnit, // 15sp baseline
+    val weekDayLabelSize: TextUnit,  // 7sp baseline
+    val weekDayNumberSize: TextUnit, // 13sp baseline
 
     // ── Stats card value ──────────────────────────────────────────
-    val statsValueSize: TextUnit,    // 22sp baseline
+    val statsValueSize: TextUnit,    // 18sp baseline
 
     // ── Bottom nav ────────────────────────────────────────────────
-    val navIconSize: Dp,      // 22dp baseline
-    val navLabelSize: TextUnit // 10sp baseline
+    val navIconSize: Dp,      // 18dp baseline
+    val navLabelSize: TextUnit // 9sp baseline
 )
 
 val LocalDimens = compositionLocalOf { defaultDimens() }
@@ -79,39 +79,39 @@ private fun createDimens(scale: Float): Dimens {
     return Dimens(
         scaleFactor = s,
 
-        spaceXSmall  = (4 * s).dp,
-        spaceSmall   = (8 * s).dp,
-        spaceMedium  = (16 * s).dp,
-        spaceLarge   = (20 * s).dp,
-        spaceXLarge  = (24 * s).dp,
-        spaceXXLarge = (32 * s).dp,
+        spaceXSmall  = (3 * s).dp,
+        spaceSmall   = (6 * s).dp,
+        spaceMedium  = (12 * s).dp,
+        spaceLarge   = (16 * s).dp,
+        spaceXLarge  = (20 * s).dp,
+        spaceXXLarge = (28 * s).dp,
 
-        screenPadding = (20 * s).dp,
+        screenPadding = (16 * s).dp,
 
-        iconSmall  = (16 * s).dp,
-        iconMedium = (20 * s).dp,
-        iconLarge  = (24 * s).dp,
-        iconXLarge = (32 * s).dp,
-        avatarSmall = (40 * s).dp,
-        avatarLarge = (90 * s).dp,
-        buttonHeight = (50 * s).dp,
-        cardRadius = (16 * s).dp,
+        iconSmall  = (14 * s).dp,
+        iconMedium = (18 * s).dp,
+        iconLarge  = (22 * s).dp,
+        iconXLarge = (28 * s).dp,
+        avatarSmall = (34 * s).dp,
+        avatarLarge = (78 * s).dp,
+        buttonHeight = (44 * s).dp,
+        cardRadius = (14 * s).dp,
 
-        fontCaption  = (10 * s).sp,
-        fontSmall    = (12 * s).sp,
-        fontBody     = (14 * s).sp,
-        fontButton   = (16 * s).sp,
-        fontTitle    = (22 * s).sp,
-        fontHeadline = (26 * s).sp,
-        fontHero     = (34 * s).sp,
+        fontCaption  = (9 * s).sp,
+        fontSmall    = (11 * s).sp,
+        fontBody     = (13 * s).sp,
+        fontButton   = (14 * s).sp,
+        fontTitle    = (20 * s).sp,
+        fontHeadline = (24 * s).sp,
+        fontHero     = (30 * s).sp,
 
-        weekDayLabelSize  = (8 * s).sp,
-        weekDayNumberSize = (15 * s).sp,
+        weekDayLabelSize  = (7 * s).sp,
+        weekDayNumberSize = (13 * s).sp,
 
-        statsValueSize = (22 * s).sp,
+        statsValueSize = (18 * s).sp,
 
-        navIconSize  = (22 * s).dp,
-        navLabelSize = (10 * s).sp
+        navIconSize  = (18 * s).dp,
+        navLabelSize = (9 * s).sp
     )
 }
 
@@ -134,4 +134,3 @@ fun ProvideDimens(content: @Composable () -> Unit) {
         content()
     }
 }
-

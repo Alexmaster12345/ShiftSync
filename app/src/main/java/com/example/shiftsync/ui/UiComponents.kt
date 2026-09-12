@@ -25,16 +25,16 @@ import com.example.shiftsync.ui.theme.*
 fun AppCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-    ) { Column(Modifier.padding(18.dp), content = content) }
+    ) { Column(Modifier.padding(14.dp), content = content) }
 }
 
 @Composable
 fun SectionTitle(text: String, trailing: String? = null, onTrailingClick: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(text, color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
+        Text(text, color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp)
         if (trailing != null) {
             Text(
                 trailing,
@@ -52,7 +52,7 @@ fun HeaderWithBack(title: String, onBack: () -> Unit) {
         Box(
             Modifier
                 .align(Alignment.CenterStart)
-                .size(42.dp)
+                .size(36.dp)
                 .clip(CircleShape)
                 .background(CardBackground)
                 .clickable(onClick = onBack),
@@ -60,7 +60,7 @@ fun HeaderWithBack(title: String, onBack: () -> Unit) {
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = AppText)
         }
-        Text(title, modifier = Modifier.align(Alignment.Center), fontWeight = FontWeight.Bold, fontSize = 20.sp, color = AppText)
+        Text(title, modifier = Modifier.align(Alignment.Center), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AppText)
     }
 }
 
@@ -74,16 +74,16 @@ fun SimpleRow(
     onClick: (() -> Unit)? = null
 ) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable(enabled = onClick != null) { onClick?.invoke() }.padding(vertical = 4.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(enabled = onClick != null) { onClick?.invoke() }.padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(.12f)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
+        Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(tint.copy(.12f)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = AppText, fontWeight = FontWeight.SemiBold)
-            subtitle?.let { Text(it, color = TextSecondary, fontSize = 13.sp) }
+            subtitle?.let { Text(it, color = TextSecondary, fontSize = 12.sp) }
         }
         trailing?.invoke()
     }
@@ -91,22 +91,22 @@ fun SimpleRow(
 
 @Composable
 fun Stepper(value: String, onMinus: () -> Unit, onPlus: () -> Unit, tint: Color = ShiftBlue) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        SmallFloatingActionButton(onClick = onMinus, containerColor = tint, contentColor = Color.White, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Remove, null) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    SmallFloatingActionButton(onClick = onMinus, containerColor = tint, contentColor = Color.White, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Remove, null) }
         Text(value, color = AppText, fontWeight = FontWeight.SemiBold)
-        SmallFloatingActionButton(onClick = onPlus, containerColor = tint, contentColor = Color.White, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Add, null) }
+    SmallFloatingActionButton(onClick = onPlus, containerColor = tint, contentColor = Color.White, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Add, null) }
     }
 }
 
 @Composable
 fun BottomNavBar(selected: NavItem, onNavigate: (NavItem) -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
-        Surface(shape = RoundedCornerShape(36.dp), color = CardBackground, shadowElevation = 12.dp) {
-            Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Box(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Surface(shape = RoundedCornerShape(30.dp), color = CardBackground, shadowElevation = 10.dp) {
+            Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(NavItem.Home, NavItem.Calendar).forEach { item -> NavButton(item, selected == item, onNavigate) }
-                Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                     Box(
-                        Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(ShiftBlue).clickable { onNavigate(NavItem.Add) },
+                        Modifier.size(46.dp).clip(RoundedCornerShape(16.dp)).background(ShiftBlue).clickable { onNavigate(NavItem.Add) },
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Default.Add, null, tint = Color.White) }
                 }
@@ -118,11 +118,11 @@ fun BottomNavBar(selected: NavItem, onNavigate: (NavItem) -> Unit, modifier: Mod
 
 @Composable
 private fun NavButton(item: NavItem, active: Boolean, onNavigate: (NavItem) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(54.dp).clickable { onNavigate(item) }) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(48.dp).clickable { onNavigate(item) }) {
         Box(
-            Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (active) ShiftBlue.copy(.14f) else Color.Transparent),
+            Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(if (active) ShiftBlue.copy(.14f) else Color.Transparent),
             contentAlignment = Alignment.Center
-        ) { Icon(item.icon, null, tint = if (active) ShiftBlue else TextSecondary, modifier = Modifier.size(28.dp)) }
+        ) { Icon(item.icon, null, tint = if (active) ShiftBlue else TextSecondary, modifier = Modifier.size(22.dp)) }
     }
 }
 
@@ -131,13 +131,13 @@ enum class NavItem(val icon: ImageVector) { Home(Icons.Default.Home), Calendar(I
 @Composable
 fun SegmentedOption(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, selectedColor: Color = ShiftBlue) {
     Surface(
-        modifier = modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick),
+        modifier = modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick),
         color = if (selected) selectedColor else CardBackgroundAlt,
         shape = RoundedCornerShape(16.dp)
     ) {
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            icon?.let { Icon(it, null, tint = if (selected) Color.White else AppText, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)) }
-            Text(text, color = if (selected) Color.White else AppText, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        icon?.let { Icon(it, null, tint = if (selected) Color.White else AppText, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)) }
+        Text(text, color = if (selected) Color.White else AppText, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
         }
     }
 }
@@ -156,8 +156,8 @@ fun AppScaffold(bottomNav: NavItem? = null, onNavigate: ((NavItem) -> Unit)? = n
 fun SaveChangesButton(saved: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-        shape = RoundedCornerShape(30.dp),
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = ButtonDefaults.buttonColors(containerColor = if (saved) GreenAccent else ShiftBlue)
     ) {
         Text(if (saved) "Saved!" else "Save Changes", color = Color.White, fontWeight = FontWeight.Bold)

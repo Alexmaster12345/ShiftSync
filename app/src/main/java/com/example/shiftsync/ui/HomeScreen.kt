@@ -61,29 +61,29 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("ShiftSync", fontWeight = FontWeight.Bold, fontSize = 30.sp, color = AppText)
+                        Text("ShiftSync", fontWeight = FontWeight.Bold, fontSize = 26.sp, color = AppText)
                         Text("$greeting, ${settings.displayName}", color = TextSecondary)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(42.dp).clip(CircleShape).background(CardBackground).clickable(onClick = onNotifications), contentAlignment = Alignment.Center) { Icon(Icons.Default.NotificationsNone, null, tint = AppText) }
-                        Box(Modifier.size(42.dp).clip(CircleShape).background(ShiftBlue), contentAlignment = Alignment.Center) { Text(settings.displayName.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold) }
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(CardBackground).clickable(onClick = onNotifications), contentAlignment = Alignment.Center) { Icon(Icons.Default.NotificationsNone, null, tint = AppText, modifier = Modifier.size(18.dp)) }
+                        Box(Modifier.size(36.dp).clip(CircleShape).background(ShiftBlue), contentAlignment = Alignment.Center) { Text(settings.displayName.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
                     }
                 }
             }
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = ShiftBlue), shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(20.dp)) {
+                    Column(Modifier.padding(16.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("ACTIVE SHIFT", color = Color.White.copy(.75f), fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
                             Icon(Icons.Default.Schedule, null, tint = Color.White)
                         }
-                        Text(String.format("%02d:%02d:%02d", elapsed / 3600, (elapsed % 3600) / 60, elapsed % 60), color = Color.White, fontSize = 38.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(16.dp))
+                        Text(String.format("%02d:%02d:%02d", elapsed / 3600, (elapsed % 3600) / 60, elapsed % 60), color = Color.White, fontSize = 32.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             MiniStatBox("Started at", if (activeStartMillis > 0L) formatShiftTime(activeStartMillis, settings.use24HourClock) else "--:--", Modifier.weight(1f))
                             MiniStatBox("Estimated Pay", formatCurrency(estimatedPay, currency), Modifier.weight(1f))
                         }
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(12.dp))
                         Button(onClick = {
                             if (activeStartMillis <= 0L) {
                                 val start = System.currentTimeMillis(); activeStartMillis = start; prefs.edit().putLong(KEY_ACTIVE_START_MILLIS, start).apply(); context.startClockService(ClockForegroundService.ACTION_START); ShiftAlertHelper.fireShiftStartAlert(context)
@@ -93,7 +93,7 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
                                 val entry = ShiftEntry(activeStartMillis, ShiftType.REGULAR, activeDurationMin, 0, hourly, PayrollCalculator.estimatePay(activeDurationMin, 0, hourly, ShiftType.REGULAR, settingsNow.overtimeEnabled, (settingsNow.overtimeDailyThresholdHours * 60).toLong(), settingsNow.overtimeMultiplier, settingsNow.workDayHours, settingsNow.salaryAmount))
                                 saveEntries(prefs, listOf(entry) + loadEntries(prefs)); prefs.edit().remove(KEY_ACTIVE_START_MILLIS).apply(); activeStartMillis = NO_ACTIVE_SHIFT; entries = loadEntries(prefs); context.startClockService(ClockForegroundService.ACTION_STOP); ShiftAlertHelper.fireShiftEndAlert(context, activeDurationMin)
                             }
-                        }, colors = ButtonDefaults.buttonColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth().height(54.dp)) { Text(if (activeStartMillis > 0L) "Clock Out" else "Clock In", color = ShiftBlue, fontWeight = FontWeight.Bold) }
+                        }, colors = ButtonDefaults.buttonColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth().height(48.dp)) { Text(if (activeStartMillis > 0L) "Clock Out" else "Clock In", color = ShiftBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     }
                 }
             }
@@ -105,7 +105,12 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
             }
             item { SectionTitle("RECENT ACTIVITY", "View All") }
             items(entries.take(10)) { entry -> RecentEntryRow(entry, currency, settings.use24HourClock) }
-            if (entries.isEmpty()) item { AppCard { Text("No entries yet", fontWeight = FontWeight.SemiBold); Text("Use the + button to add your first shift.", color = TextSecondary) } }
+            if (entries.isEmpty()) item {
+                AppCard(Modifier.fillMaxWidth()) {
+                    Text("No entries yet", fontWeight = FontWeight.SemiBold)
+                    Text("Use the + button to add your first shift.", color = TextSecondary, modifier = Modifier.fillMaxWidth())
+                }
+            }
         }
     }
 }
