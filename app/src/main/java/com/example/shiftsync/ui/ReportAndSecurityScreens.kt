@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +29,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.example.shiftsync.*
 import com.example.shiftsync.ui.theme.*
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberCameraPositionState
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -263,32 +269,44 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
             }
         }
 
-        Box(Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(28.dp)).background(Color(0xFF1B2A41))) {
-            Canvas(Modifier.fillMaxSize()) {
-                drawRect(brush = Brush.linearGradient(listOf(Color(0xFF2C7DA0), Color(0xFF577590), Color(0xFF264653))))
-                for (i in 0..10) {
-                    drawLine(Color.White.copy(.12f), start = androidx.compose.ui.geometry.Offset(0f, size.height / 10 * i), end = androidx.compose.ui.geometry.Offset(size.width, size.height / 10 * i), strokeWidth = 2f)
+        val selectedLat = resultLat
+        val selectedLng = resultLng
+        val mapTarget = remember(selectedLat, selectedLng) {
+            if (selectedLat != null && selectedLng != null) LatLng(selectedLat, selectedLng) else LatLng(32.0853, 34.7818)
+        }
+        val cameraPositionState = rememberCameraPositionState {
+            position = CameraPosition.fromLatLngZoom(mapTarget, 12f)
+        }
+
+        LaunchedEffect(selectedLat, selectedLng) {
+            val lat = selectedLat ?: 32.0853
+            val lng = selectedLng ?: 34.7818
+            cameraPositionState.animate(
+                com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(LatLng(lat, lng), 12f),
+                500
+            )
+        }
+
+        Box(Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(28.dp))) {
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                properties = MapProperties(isMyLocationEnabled = false),
+                uiSettings = MapUiSettings(zoomControlsEnabled = false, myLocationButtonEnabled = false)
+            ) {
+                if (selectedLat != null && selectedLng != null) {
+                    Marker(
+                        state = com.google.maps.android.compose.MarkerState(position = LatLng(selectedLat, selectedLng)),
+                        title = resultLabel ?: "Workplace",
+                        snippet = String.format(Locale.US, "%.4f, %.4f", selectedLat, selectedLng)
+                    )
                 }
-                for (i in 0..8) {
-                    drawLine(Color.White.copy(.08f), start = androidx.compose.ui.geometry.Offset(size.width / 8 * i, 0f), end = androidx.compose.ui.geometry.Offset(size.width / 8 * i, size.height), strokeWidth = 2f)
-                }
-                drawPath(
-                    path = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(0f, size.height * 0.72f)
-                        cubicTo(size.width * 0.2f, size.height * 0.56f, size.width * 0.4f, size.height * 0.85f, size.width * 0.6f, size.height * 0.62f)
-                        cubicTo(size.width * 0.8f, size.height * 0.42f, size.width * 0.92f, size.height * 0.8f, size.width, size.height * 0.7f)
-                        lineTo(size.width, size.height)
-                        lineTo(0f, size.height)
-                        close()
-                    },
-                    color = Color.White.copy(alpha = 0.12f)
-                )
-                drawCircle(color = Color(0xFF8ED7FF).copy(alpha = 0.18f), radius = size.minDimension * 0.18f, center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.42f))
-                drawCircle(color = Color(0xFF8ED7FF).copy(alpha = 0.1f), radius = size.minDimension * 0.28f, center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.42f))
             }
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Box(Modifier.size(52.dp).clip(RoundedCornerShape(20.dp)).background(ShiftBlue), contentAlignment = Alignment.Center) {
-                    if (isLocating) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp) else Icon(Icons.Default.LocationOn, null, tint = Color.White)
+                if (resultLat == null || resultLng == null) {
+                    Box(Modifier.size(52.dp).clip(RoundedCornerShape(20.dp)).background(ShiftBlue), contentAlignment = Alignment.Center) {
+                        if (isLocating) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp) else Icon(Icons.Default.LocationOn, null, tint = Color.White)
+                    }
                 }
                 if (resultLat != null && resultLng != null) {
                     Spacer(Modifier.height(12.dp))
@@ -300,7 +318,7 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     Text(errorText.orEmpty(), color = Color(0xFFFF8A8A), fontSize = 13.sp)
                 }
             }
-            Text("Map Preview", color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.TopStart).padding(14.dp))
+            Text("Google Map", color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.TopStart).padding(14.dp).background(Color.Black.copy(alpha = 0.25f), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp))
         }
 
         Surface(color = DarkSheetCard, shape = RoundedCornerShape(24.dp)) {
