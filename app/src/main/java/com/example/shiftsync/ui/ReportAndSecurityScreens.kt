@@ -323,6 +323,30 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     Spacer(Modifier.width(8.dp))
                     Text(if (isLocating) "Locating…" else "Use Current Location", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = {
+                        val query = searchQuery.trim().ifEmpty { resultLabel ?: "workplace" }
+                        val uri = if (resultLat != null && resultLng != null) {
+                            Uri.parse("geo:${resultLat},${resultLng}?q=${Uri.encode(query)}")
+                        } else {
+                            Uri.parse("geo:0,0?q=${Uri.encode(query)}")
+                        }
+                        val mapIntent = Intent(Intent.ACTION_VIEW, uri)
+                        if (mapIntent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(mapIntent)
+                        } else {
+                            errorText = "No map app is installed on this phone."
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B6DC1))
+                ) {
+                    Icon(Icons.Default.Map, null, tint = Color.White)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Open in Phone Maps", color = Color.White, fontWeight = FontWeight.Bold)
+                }
                 if (resultLat != null && resultLng != null) {
                     Spacer(Modifier.height(10.dp))
                     Button(
