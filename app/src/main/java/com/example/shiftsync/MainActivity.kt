@@ -107,7 +107,7 @@ private fun ShiftSyncRoot() {
             Screen.EXPORT_REPORTS -> ExportReportsScreen(settings, onBack = { screen = Screen.PROFILE })
             Screen.HOW_TO_USE -> HowToUseScreen(onBack = { screen = Screen.PROFILE })
             Screen.SECURITY_PRIVACY -> SecurityPrivacyScreen(
-                onBack = { screen = Screen.PROFILE },
+               onBack = { refresh(); screen = Screen.PROFILE },
                onCleared = { refresh(); screen = Screen.LOGIN }
             )
             Screen.SALARY_CURRENCY -> SalaryCurrencyScreen(settings, onBack = { refresh(); screen = salaryCurrencyOrigin }, onSaved = refresh)

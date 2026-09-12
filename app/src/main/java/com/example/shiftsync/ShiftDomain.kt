@@ -300,3 +300,13 @@ fun importPrefsFromJson(context: Context, prefs: SharedPreferences, json: String
     }
     editor.apply()
 }
+
+fun peekImportedEntryCount(json: String): Int? {
+    val root = JSONObject(json)
+    val payload = root.optString(KEY_ENTRIES)
+    if (payload.isNullOrBlank()) return 0
+    return payload.split(ENTRY_DELIMITER).count { row ->
+        val fields = row.split(FIELD_DELIMITER)
+        fields.size >= 6 && fields[0].toLongOrNull() != null
+    }
+}

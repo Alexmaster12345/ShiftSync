@@ -63,13 +63,55 @@ fun SecurityPrivacyScreen(onBack: () -> Unit, onCleared: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var showConfirm by remember { mutableStateOf(false) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) { context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { importPrefsFromJson(context, prefs, it.readText()) } } }
+    var pendingImport by remember { mutableStateOf<String?>(null) }
+    var pendingImportCount by remember { mutableStateOf<Int?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use {
+                val json = it.readText()
+                pendingImport = json
+                pendingImportCount = runCatching { peekImportedEntryCount(json) }.getOrNull()
+            }
+        }
+    }
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(8.dp)); HeaderWithBack("Security & Privacy", onBack)
         AppCard { SimpleRow(Icons.Default.Shield, ShiftBlue, "Data stored locally", "All shift data lives only on this device. Nothing is sent to external servers."); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.CheckCircle, GreenAccent, "No account required", "ShiftSync works without sign-up. Your data stays private and is never shared.") }
         AppCard { SimpleRow(Icons.Default.UploadFile, GreenAccent, "Export Backup (JSON)", "Save your shift records to transfer to a new device", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { shareJsonBackup(context, prefs) }); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.Download, ShiftBlue, "Import Backup", "Restore shift records from a previously exported file", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { picker.launch(arrayOf("application/json")) }) }
         AppCard { SimpleRow(Icons.Default.Delete, RedAccent, "Clear All Data", "Deletes all shifts, settings, and profile info", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = RedAccent) }, onClick = { showConfirm = true }) }
         if (showConfirm) AlertDialog(onDismissRequest = { showConfirm = false }, confirmButton = { TextButton(onClick = { prefs.edit().clear().apply(); showConfirm = false; onCleared() }) { Text("Clear", color = RedAccent) } }, dismissButton = { TextButton({ showConfirm = false }) { Text("Cancel") } }, title = { Text("Clear all data?") }, text = { Text("This removes all shifts, settings, and profile information from this device.") })
+        if (pendingImport != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    pendingImport = null
+                    pendingImportCount = null
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        importPrefsFromJson(context, prefs, pendingImport.orEmpty())
+                        pendingImport = null
+                        pendingImportCount = null
+                        onBack()
+                    }) { Text("Import", color = ShiftBlue) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        pendingImport = null
+                        pendingImportCount = null
+                    }) { Text("Cancel") }
+                },
+                title = { Text("Import backup?") },
+                text = {
+                    Text(
+                        if (pendingImportCount != null) {
+                            "This will overwrite your current ShiftSync data with ${pendingImportCount} imported shift entries."
+                        } else {
+                            "This will overwrite your current ShiftSync data with the selected backup."
+                        }
+                    )
+                }
+            )
+        }
     }
 }
 
