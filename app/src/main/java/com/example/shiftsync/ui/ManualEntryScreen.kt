@@ -41,9 +41,16 @@ fun ManualEntryScreen(settings: AppSettings, onBack: () -> Unit) {
     var breakMinutes by remember { mutableIntStateOf(30) }
     var notes by remember { mutableStateOf("") }
     val currentDate = Calendar.getInstance().apply { timeInMillis = dateMillis }
-    val duration = (((endHour * 60 + endMinute) - (startHour * 60 + startMinute)).takeIf { it > 0 } ?: (8 * 60)).toLong()
+    val startMinutes = startHour * 60 + startMinute
+    val endMinutes = endHour * 60 + endMinute
+    val durationMinutes = when {
+        shiftType == ShiftType.VACATION -> (settings.workDayHours * 60).toLong()
+        endMinutes > startMinutes -> (endMinutes - startMinutes).toLong()
+        endMinutes == startMinutes -> (24 * 60).toLong()
+        else -> (24 * 60 + endMinutes - startMinutes).toLong()
+    }
     val hourlyRate = PayrollCalculator.hourlyRate(settings)
-    val pay = PayrollCalculator.estimatePay(duration, breakMinutes, hourlyRate, shiftType, settings.overtimeEnabled, (settings.overtimeDailyThresholdHours * 60).toLong(), settings.overtimeMultiplier, settings.workDayHours, settings.salaryAmount)
+    val pay = PayrollCalculator.estimatePay(durationMinutes, breakMinutes, hourlyRate, shiftType, settings.overtimeEnabled, (settings.overtimeDailyThresholdHours * 60).toLong(), settings.overtimeMultiplier, settings.workDayHours, settings.salaryAmount)
     val monthNames = DateFormatSymbols().months.toList()
     val grid = remember(currentDate.get(Calendar.MONTH), currentDate.get(Calendar.YEAR)) {
         val tmp = Calendar.getInstance().apply { set(currentDate.get(Calendar.YEAR), currentDate.get(Calendar.MONTH), 1) }
@@ -54,7 +61,7 @@ fun ManualEntryScreen(settings: AppSettings, onBack: () -> Unit) {
         val entry = ShiftEntry(
             startedAtMillis = Calendar.getInstance().apply { timeInMillis = dateMillis; set(Calendar.HOUR_OF_DAY, if (shiftType == ShiftType.VACATION) 0 else startHour); set(Calendar.MINUTE, if (shiftType == ShiftType.VACATION) 0 else startMinute) }.timeInMillis,
             shiftType = shiftType,
-            durationMinutes = if (shiftType == ShiftType.VACATION) (settings.workDayHours * 60).toLong() else duration,
+            durationMinutes = durationMinutes,
             unpaidBreakMinutes = if (shiftType == ShiftType.VACATION) 0 else breakMinutes,
             hourlyRate = hourlyRate,
             estimatedPay = pay,
@@ -67,7 +74,7 @@ fun ManualEntryScreen(settings: AppSettings, onBack: () -> Unit) {
             AppCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { IconButton({ currentDate.add(Calendar.MONTH, -1); dateMillis = currentDate.timeInMillis }) { Icon(Icons.Default.ChevronLeft, null, tint = ShiftBlue) }; Text("${monthNames[currentDate.get(Calendar.MONTH)]} ${currentDate.get(Calendar.YEAR)}", fontWeight = FontWeight.Bold); IconButton({ currentDate.add(Calendar.MONTH, 1); dateMillis = currentDate.timeInMillis }) { Icon(Icons.Default.ChevronRight, null, tint = ShiftBlue) } }; Row(Modifier.fillMaxWidth()) { listOf("M","T","W","T","F","S","S").forEach { Text(it, modifier = Modifier.weight(1f), color = TextSecondary, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) } }; repeat((grid.size + 6) / 7) { row -> Row(Modifier.fillMaxWidth()) { repeat(7) { col -> val day = grid.getOrNull(row * 7 + col); Box(Modifier.weight(1f).aspectRatio(1f).clip(CircleShape).background(if (day == currentDate.get(Calendar.DAY_OF_MONTH)) if (shiftType == ShiftType.VACATION) GreenAccent else ShiftBlue else Color.Transparent).clickable(enabled = day != null) { if (day != null) { currentDate.set(Calendar.DAY_OF_MONTH, day); dateMillis = currentDate.timeInMillis } }, contentAlignment = Alignment.Center) { Text(day?.toString().orEmpty(), color = if (day == currentDate.get(Calendar.DAY_OF_MONTH)) Color.White else AppText) } } } } }
             AppCard { SimpleRow(Icons.Default.Label, ShiftBlue, "Type", shiftType.label, trailing = { Icon(Icons.Default.KeyboardArrowDown, null, tint = ShiftBlue) }, onClick = { shiftType = if (shiftType == ShiftType.REGULAR) ShiftType.VACATION else ShiftType.REGULAR }) }
             if (shiftType == ShiftType.REGULAR) {
-                AppCard { Text("SHIFT HOURS", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp); Spacer(Modifier.height(12.dp)); Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { TimePill("Start", "%02d:%02d".format(startHour, startMinute), Modifier.weight(1f)) { TimePickerDialog(context, { _, h, m -> startHour = h; startMinute = m }, startHour, startMinute, true).show() }; TimePill("End", "%02d:%02d".format(endHour, endMinute), Modifier.weight(1f)) { TimePickerDialog(context, { _, h, m -> endHour = h; endMinute = m }, endHour, endMinute, true).show() } }; Spacer(Modifier.height(14.dp)); Text("🕐 Duration: ${formatDuration(duration)}", fontWeight = FontWeight.SemiBold, color = AppText) }
+                AppCard { Text("SHIFT HOURS", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp); Spacer(Modifier.height(12.dp)); Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { TimePill("Start", "%02d:%02d".format(startHour, startMinute), Modifier.weight(1f)) { TimePickerDialog(context, { _, h, m -> startHour = h; startMinute = m }, startHour, startMinute, true).show() }; TimePill("End", "%02d:%02d".format(endHour, endMinute), Modifier.weight(1f)) { TimePickerDialog(context, { _, h, m -> endHour = h; endMinute = m }, endHour, endMinute, true).show() } }; Spacer(Modifier.height(14.dp)); Text("🕐 Duration: ${formatDuration(durationMinutes)}", fontWeight = FontWeight.SemiBold, color = AppText) }
                 AppCard { Text("DETAILS", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp); Spacer(Modifier.height(12.dp)); Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text("🪙 Unpaid Break", modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold); Stepper("${breakMinutes} min", { breakMinutes = (breakMinutes - 15).coerceAtLeast(0) }, { breakMinutes += 15 }) } }
                 Text("NOTES (OPTIONAL)", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 OutlinedTextField(value = notes, onValueChange = { notes = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("e.g. Forgot to clock in") }, shape = RoundedCornerShape(18.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = CardBackground, focusedContainerColor = CardBackground, unfocusedBorderColor = BorderColor, focusedBorderColor = ShiftBlue))

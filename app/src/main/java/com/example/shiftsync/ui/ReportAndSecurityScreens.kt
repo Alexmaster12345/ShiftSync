@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -23,10 +24,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.content.FileProvider
 import com.example.shiftsync.*
 import com.example.shiftsync.ui.theme.*
@@ -36,6 +42,20 @@ import java.util.*
 import kotlinx.coroutines.delay
 
 private enum class ReportPeriod(val label: String) { WEEK("This Week"), MONTH("This Month"), YEAR("This Year"), ALL("All Time") }
+
+private fun currencyColor(symbol: String): Color = when (symbol) {
+    "$" -> ShiftBlue
+    "₪" -> GreenAccent
+    "€" -> OrangeAccent
+    else -> ShiftBlue
+}
+
+private fun currencyIcon(symbol: String) = when (symbol) {
+    "$" -> Icons.Default.AttachMoney
+    "₪" -> Icons.Default.Sell
+    "€" -> Icons.Default.Euro
+    else -> Icons.Default.AttachMoney
+}
 
 @Composable
 fun ExportReportsScreen(settings: AppSettings, onBack: () -> Unit) {
@@ -118,6 +138,7 @@ fun SecurityPrivacyScreen(onBack: () -> Unit, onCleared: () -> Unit) {
 @Composable
 fun SalaryCurrencyScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () -> Unit) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var currency by remember { mutableStateOf(settings.currencySymbol) }
     var paymentType by remember { mutableStateOf(settings.paymentType) }
@@ -136,7 +157,68 @@ fun SalaryCurrencyScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () 
         Text("CURRENCY", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         AppCard { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { listOf("$" to "Dollar", "₪" to "Shekel", "€" to "Euro").forEach { (symbol, label) -> SegmentedOption("$symbol $label", currency == symbol, { currency = symbol }, Modifier.weight(1f)) } } }
         Text("PAY RATE", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        AppCard { SimpleRow(Icons.Default.DateRange, ShiftBlue, "Payment Type", paymentType.name.lowercase().replaceFirstChar { it.uppercase() }, trailing = { Text(paymentType.name.lowercase().replaceFirstChar { it.uppercase() } + " ⌄", color = ShiftBlue, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { paymentType = if (paymentType == PaymentType.MONTHLY) PaymentType.HOURLY else PaymentType.MONTHLY }) }); HorizontalDivider(color = BorderColor); Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.AttachMoney, tint = ShiftBlue, contentDescription = null); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(if (paymentType == PaymentType.MONTHLY) "Monthly Salary" else "Hourly Rate", color = TextSecondary, fontSize = 12.sp); OutlinedTextField(value = salary, onValueChange = { salary = it }, prefix = { Text(currency) }, colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = CardBackground, unfocusedContainerColor = CardBackground, focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent)) } }; HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.Schedule, GreenAccent, "Work Day Hours", "Used for day-off pay calculation", trailing = { Stepper("${workday}h", { workday = (workday - 0.5).coerceAtLeast(1.0) }, { workday += 0.5 }, GreenAccent) }) }
+        AppCard {
+            SimpleRow(
+                Icons.Default.DateRange,
+                ShiftBlue,
+                "Payment Type",
+                paymentType.name.lowercase().replaceFirstChar { it.uppercase() },
+                trailing = {
+                    Text(
+                        paymentType.name.lowercase().replaceFirstChar { it.uppercase() } + " ⌄",
+                        color = ShiftBlue,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable {
+                            paymentType = if (paymentType == PaymentType.MONTHLY) PaymentType.HOURLY else PaymentType.MONTHLY
+                        }
+                    )
+                }
+            )
+            HorizontalDivider(color = BorderColor)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+            ) {
+                Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(currencyColor(currency).copy(.12f)), contentAlignment = Alignment.Center) {
+                    Icon(currencyIcon(currency), tint = currencyColor(currency), contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.width(6.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Monthly Salary", color = AppText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(if (paymentType == PaymentType.MONTHLY) "Paid monthly" else "Paid per hour", color = TextSecondary, fontSize = 12.sp)
+                }
+                Spacer(Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = CardBackground,
+                    modifier = Modifier.width(144.dp).height(34.dp)
+                ) {
+                    Box(Modifier.fillMaxSize().padding(horizontal = 8.dp), contentAlignment = Alignment.CenterEnd) {
+                        BasicTextField(
+                            value = salary,
+                            onValueChange = { input: String -> salary = input.filter { ch -> ch.isDigit() || ch == '.' } },
+                            singleLine = true,
+                            textStyle = TextStyle(
+                                color = AppText,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                platformStyle = PlatformTextStyle(includeFontPadding = false)
+                            ),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                            ),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { focusManager.clearFocus() }),
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+            HorizontalDivider(color = BorderColor)
+            SimpleRow(Icons.Default.Schedule, GreenAccent, "Work Day Hours", "Used for day-off pay calculation", trailing = { Stepper("${workday}h", { workday = (workday - 0.5).coerceAtLeast(1.0) }, { workday += 0.5 }, GreenAccent) })
+        }
         SaveChangesButton(saved = saved) {
             persist()
             saved = true
