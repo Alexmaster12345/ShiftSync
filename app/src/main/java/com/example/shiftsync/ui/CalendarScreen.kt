@@ -36,7 +36,8 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val settings = loadSettings(prefs)
-    val entries = loadEntries(prefs)
+    var entries by remember { mutableStateOf(loadEntries(prefs)) }
+    var editingEntry by remember { mutableStateOf<ShiftEntry?>(null) }
     val today = Calendar.getInstance()
     var month by remember { mutableIntStateOf(today.get(Calendar.MONTH)) }
     var year by remember { mutableIntStateOf(today.get(Calendar.YEAR)) }
@@ -91,7 +92,7 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("SHIFTS FOR ${monthNames[month].uppercase()}", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     val shiftWord = if (monthEntries.size == 1) "SHIFT" else "SHIFTS"
-                    Text("${monthEntries.size} $shiftWord • ${formatDuration(monthEntries.sumOf { it.durationMinutes }).uppercase()}", color = TextSecondary, fontSize = 12.sp)
+                    Text("${monthEntries.size} $shiftWord • ${formatDuration(monthEntries.sumOf { it.durationMinutes })}", color = TextSecondary, fontSize = 12.sp)
                 }
             }
             if (monthEntries.isEmpty()) {
@@ -103,7 +104,7 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
                 }
             }
             items(monthEntries.sortedByDescending { it.startedAtMillis }) { entry ->
-                AppCard {
+                AppCard(Modifier.fillMaxWidth().clickable { editingEntry = entry }) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(color = ShiftBlue.copy(.12f), shape = RoundedCornerShape(16.dp)) {
                             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -124,5 +125,15 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
                 }
             }
         }
+    }
+
+    editingEntry?.let { entry ->
+        EditShiftDialog(
+            entry = entry,
+            settings = settings,
+            onDismiss = { editingEntry = null },
+            onSaved = { editingEntry = null; entries = loadEntries(prefs) },
+            onDeleted = { editingEntry = null; entries = loadEntries(prefs) }
+        )
     }
 }

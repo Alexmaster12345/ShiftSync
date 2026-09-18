@@ -360,43 +360,32 @@ fun MapPickerScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
                 Text("Search by address, or use your current GPS location for the workplace pin.", color = Color.White.copy(.8f), fontSize = 13.sp, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        val granted = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        if (granted) resolveLocation() else permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ShiftBlue),
-                    enabled = !isLocating
-                ) {
-                    Icon(Icons.Default.MyLocation, null, tint = Color.White)
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (isLocating) "Locating…" else "Use Current Location", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = {
-                        val query = searchQuery.trim().ifEmpty { resultLabel ?: "workplace" }
-                        val uri = if (resultLat != null && resultLng != null) {
-                            Uri.parse("geo:${resultLat},${resultLng}?q=${Uri.encode(query)}")
-                        } else {
-                            Uri.parse("geo:0,0?q=${Uri.encode(query)}")
-                        }
-                        val mapIntent = Intent(Intent.ACTION_VIEW, uri)
-                        if (mapIntent.resolveActivity(context.packageManager) != null) {
-                            context.startActivity(mapIntent)
-                        } else {
-                            errorText = "No map app is installed on this phone."
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B6DC1))
-                ) {
-                    Icon(Icons.Default.Map, null, tint = Color.White)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Search in Google Maps", color = Color.White, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = {
+                            val granted = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                            if (granted) resolveLocation() else permissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                        },
+                        modifier = Modifier.weight(1f).height(52.dp),
+                        shape = RoundedCornerShape(26.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ShiftBlue),
+                        enabled = !isLocating
+                    ) {
+                        Icon(Icons.Default.MyLocation, null, tint = Color.White)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isLocating) "Locating…" else "Current Location", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    OutlinedButton(
+                        onClick = { searchAddress() },
+                        modifier = Modifier.weight(1f).height(52.dp),
+                        shape = RoundedCornerShape(26.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ShiftBlue),
+                        enabled = !isLocating
+                    ) {
+                        Icon(Icons.Default.Search, null, tint = ShiftBlue)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Search", fontWeight = FontWeight.Bold)
+                    }
                 }
                 if (resultLat != null && resultLng != null) {
                     Spacer(Modifier.height(10.dp))

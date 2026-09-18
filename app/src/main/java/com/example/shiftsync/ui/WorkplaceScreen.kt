@@ -24,21 +24,19 @@ fun WorkplaceScreen(settings: AppSettings, onOpenMap: () -> Unit, onToggleGeofen
             AppCard {
                 SimpleRow(Icons.Default.LocationSearching, TextSecondary, if (settings.workplaceSet) settings.workplaceLabel else "No workplace set", if (settings.workplaceSet) "Tap below to update your workplace location" else "Tap below to set your workplace location", onClick = onOpenMap)
                 HorizontalDivider(color = BorderColor)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    SimpleRow(
-                        Icons.Default.WifiTethering,
-                        ShiftBlue,
-                        "Auto-Geofencing",
-                        if (!settings.workplaceSet) "Set a workplace first" else if (settings.autoGeofencingEnabled) "Enabled when you arrive or leave work" else "Needs location permission",
-                        trailing = {
-                            Switch(
-                                checked = settings.autoGeofencingEnabled,
-                                onCheckedChange = onToggleGeofencing,
-                                enabled = settings.workplaceSet
-                            )
-                        }
-                    )
-                }
+                SimpleRow(
+                    Icons.Default.WifiTethering,
+                    ShiftBlue,
+                    "Auto-Geofencing",
+                    if (!settings.workplaceSet) "Set a workplace first" else if (settings.autoGeofencingEnabled) "Active — monitoring your workplace" else "Needs location permission",
+                    trailing = {
+                        Switch(
+                            checked = settings.autoGeofencingEnabled,
+                            onCheckedChange = onToggleGeofencing,
+                            enabled = settings.workplaceSet
+                        )
+                    }
+                )
             }
             Button(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().height(56.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp), colors = ButtonDefaults.buttonColors(containerColor = ShiftBlue)) { Icon(Icons.Default.Map, null, tint = androidx.compose.ui.graphics.Color.White); Spacer(Modifier.width(8.dp)); Text("Set Workplace on Map", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold) }
         }
