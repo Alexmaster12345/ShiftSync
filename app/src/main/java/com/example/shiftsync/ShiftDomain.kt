@@ -58,8 +58,29 @@ data class AppSettings(
     val vacationDaysPerYear: Int = 16,
     val workFromHomeEnabled: Boolean = false,
     val officeDays: Set<String> = DEFAULT_REMINDER_DAYS,
-    val homeDays: Set<String> = emptySet()
-)
+    val homeDays: Set<String> = emptySet(),
+    // In-app text size, independent of the device's own display-size setting — index into
+    // TEXT_SIZE_LABELS/TEXT_SIZE_SCALE_STEPS below. SYSTEM_DEFAULT_TEXT_SIZE_INDEX ("Default")
+    // means "just follow the device's own font scale" rather than forcing a fixed size.
+    val uiTextSizeIndex: Int = SYSTEM_DEFAULT_TEXT_SIZE_INDEX
+) {
+    companion object {
+        const val SYSTEM_DEFAULT_TEXT_SIZE_INDEX = 3
+        val TEXT_SIZE_LABELS = listOf("Extra Small", "Small", "Medium", "Default", "Large", "Extra Large", "XX-Large")
+        // Fixed font-scale multiplier used when a step other than "Default" is selected,
+        // overriding the device's own font scale entirely (mirrors iOS's explicit
+        // UIContentSizeCategory override). Index 3 (Default) is unused — that step tracks
+        // the live system font scale instead, see uiTextFontScale(systemFontScale) below.
+        val TEXT_SIZE_SCALE_STEPS = listOf(0.85f, 0.9f, 0.95f, 1.0f, 1.15f, 1.3f, 1.45f)
+    }
+
+    val isUsingSystemDefaultTextSize: Boolean get() = uiTextSizeIndex == SYSTEM_DEFAULT_TEXT_SIZE_INDEX
+    val uiTextSizeLabel: String get() = TEXT_SIZE_LABELS.getOrElse(uiTextSizeIndex) { "Default" }
+
+    /** The font scale to render the app at: the live system scale at "Default", else a fixed override. */
+    fun uiTextFontScale(systemFontScale: Float): Float =
+        if (isUsingSystemDefaultTextSize) systemFontScale else TEXT_SIZE_SCALE_STEPS.getOrElse(uiTextSizeIndex) { 1.0f }
+}
 
 object PayrollCalculator {
     fun estimatePay(
@@ -138,6 +159,7 @@ const val KEY_VACATION_DAYS_PER_YEAR = "vacation_days_per_year"
 const val KEY_WORK_FROM_HOME_ENABLED = "work_from_home_enabled"
 const val KEY_OFFICE_DAYS = "office_days"
 const val KEY_HOME_DAYS = "home_days"
+const val KEY_UI_TEXT_SIZE_INDEX = "ui_text_size_index"
 
 val DEFAULT_REMINDER_DAYS: Set<String> = setOf("2", "3", "4", "5", "6")
 private const val ENTRY_DELIMITER = ";"
@@ -173,7 +195,8 @@ fun loadSettings(prefs: SharedPreferences): AppSettings = AppSettings(
     homeDays = prefs.getStringSet(
         KEY_HOME_DAYS,
         if (prefs.contains(KEY_HOME_DAYS)) emptySet() else prefs.getStringSet(KEY_REMINDER_CLOCK_IN_DAYS, DEFAULT_REMINDER_DAYS)?.toSet() ?: emptySet()
-    )?.toSet() ?: emptySet()
+    )?.toSet() ?: emptySet(),
+    uiTextSizeIndex = prefs.getInt(KEY_UI_TEXT_SIZE_INDEX, AppSettings.SYSTEM_DEFAULT_TEXT_SIZE_INDEX)
 )
 
 fun formatDate(epochMillis: Long): String = SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(epochMillis))

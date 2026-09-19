@@ -159,12 +159,13 @@ fun AppScaffold(bottomNav: NavItem? = null, onNavigate: ((NavItem) -> Unit)? = n
 }
 
 @Composable
-fun SaveChangesButton(saved: Boolean, onClick: () -> Unit) {
+fun SaveChangesButton(saved: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth().height(48.dp),
         shape = RoundedCornerShape(24.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = if (saved) GreenAccent else ShiftBlue)
+        colors = ButtonDefaults.buttonColors(containerColor = if (saved) GreenAccent else ShiftBlue, disabledContainerColor = TextMuted)
     ) {
         Text(if (saved) "Saved!" else "Save Changes", color = Color.White, fontWeight = FontWeight.Bold)
     }

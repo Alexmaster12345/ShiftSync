@@ -12,6 +12,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.core.content.ContextCompat
 import com.example.shiftsync.ui.*
 import com.example.shiftsync.ui.theme.ShiftSyncTheme
@@ -60,7 +62,15 @@ private fun ShiftSyncRoot() {
         }
     }
 
+    // In-app Text Size (Profile > Appearance) overrides the density's font scale independent
+    // of the device's own display-size setting — "Default" tracks the live system scale.
+    val systemDensity = LocalDensity.current
+    val scaledDensity = remember(settings.uiTextSizeIndex, systemDensity.density, systemDensity.fontScale) {
+        Density(systemDensity.density, settings.uiTextFontScale(systemDensity.fontScale))
+    }
+
     ShiftSyncTheme(settings.appearance) {
+      CompositionLocalProvider(LocalDensity provides scaledDensity) {
         if (splashVisible) {
             SplashScreen()
             LaunchedEffect(Unit) {
@@ -124,5 +134,6 @@ private fun ShiftSyncRoot() {
             Screen.TERMS_OF_USE -> TermsOfUseScreen(onBack = { screen = Screen.PROFILE })
             Screen.PRIVACY_POLICY -> PrivacyPolicyScreen(onBack = { screen = Screen.PROFILE })
         }
+      }
     }
 }
