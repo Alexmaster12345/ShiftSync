@@ -101,8 +101,14 @@ fun Stepper(value: String, onMinus: () -> Unit, onPlus: () -> Unit, tint: Color 
 @Composable
 fun BottomNavBar(selected: NavItem, onNavigate: (NavItem) -> Unit, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-        Surface(shape = RoundedCornerShape(30.dp), color = CardBackground, shadowElevation = 10.dp) {
-            Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Surface(shape = RoundedCornerShape(30.dp), color = CardBackground.copy(alpha = 0.55f), shadowElevation = 10.dp) {
+            Row(
+                Modifier
+                    .background(Color.White.copy(alpha = 0.2f))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 listOf(NavItem.Home, NavItem.Calendar).forEach { item -> NavButton(item, selected == item, onNavigate) }
                 Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) {
                     Box(

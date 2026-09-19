@@ -20,7 +20,8 @@ data class ShiftEntry(
     val unpaidBreakMinutes: Int,
     val hourlyRate: Double,
     val estimatedPay: Double,
-    val notes: String = ""
+    val notes: String = "",
+    val id: String = java.util.UUID.randomUUID().toString()
 )
 
 enum class ShiftType(val label: String) {
@@ -224,7 +225,8 @@ fun saveEntries(prefs: SharedPreferences, entries: List<ShiftEntry>) {
             entry.unpaidBreakMinutes,
             entry.hourlyRate,
             entry.estimatedPay,
-            URLEncoder.encode(entry.notes, "UTF-8")
+            URLEncoder.encode(entry.notes, "UTF-8"),
+            entry.id
         ).joinToString(FIELD_DELIMITER)
     }
     prefs.edit().putString(KEY_ENTRIES, payload).apply()
@@ -250,9 +252,56 @@ fun loadEntries(prefs: SharedPreferences): List<ShiftEntry> {
             unpaidBreakMinutes = fields[3].toIntOrNull() ?: return@mapNotNull null,
             hourlyRate = fields[4].toDoubleOrNull() ?: return@mapNotNull null,
             estimatedPay = fields[5].toDoubleOrNull() ?: return@mapNotNull null,
-            notes = fields.getOrNull(6)?.let { URLDecoder.decode(it, "UTF-8") }.orEmpty()
+            notes = fields.getOrNull(6)?.let { URLDecoder.decode(it, "UTF-8") }.orEmpty(),
+            id = fields.getOrNull(7)?.takeIf { it.isNotBlank() } ?: java.util.UUID.randomUUID().toString()
         )
     }.sortedByDescending { it.startedAtMillis }
+}
+
+fun updateEntry(prefs: SharedPreferences, id: String, updated: ShiftEntry) {
+    val entries = loadEntries(prefs).map { if (it.id == id) updated else it }
+    saveEntries(prefs, entries)
+}
+
+fun deleteEntry(prefs: SharedPreferences, id: String) {
+    saveEntries(prefs, loadEntries(prefs).filterNot { it.id == id })
+}
+
+/**
+ * Re-derives the regular/overtime split for every stored Regular entry using the *current*
+ * Overtime Rules settings. Mirrors the split HomeScreen's clock-out performs on a live shift,
+ * applied retroactively to already-logged entries. Called when the user picks "Apply to All
+ * Shifts" in the Overtime Rules apply-change prompt.
+ */
+fun reapplyOvertimeRulesToExistingEntries(prefs: SharedPreferences, settings: AppSettings) {
+    val thresholdMinutes = (settings.overtimeDailyThresholdHours * 60).toLong()
+    val hourlyRate = PayrollCalculator.hourlyRate(settings)
+    val result = mutableListOf<ShiftEntry>()
+    for (entry in loadEntries(prefs)) {
+        if (!settings.overtimeEnabled || entry.shiftType != ShiftType.REGULAR || entry.durationMinutes <= thresholdMinutes) {
+            result += entry
+            continue
+        }
+        val regularEntry = entry.copy(
+            durationMinutes = thresholdMinutes,
+            unpaidBreakMinutes = 0,
+            hourlyRate = hourlyRate,
+            estimatedPay = PayrollCalculator.estimatePay(thresholdMinutes, 0, hourlyRate, ShiftType.REGULAR, settings.overtimeEnabled, thresholdMinutes, settings.overtimeMultiplier, settings.workDayHours, settings.salaryAmount),
+            id = entry.id
+        )
+        val otDuration = entry.durationMinutes - thresholdMinutes
+        val otEntry = ShiftEntry(
+            startedAtMillis = entry.startedAtMillis + thresholdMinutes * 60000,
+            shiftType = ShiftType.OVERTIME,
+            durationMinutes = otDuration,
+            unpaidBreakMinutes = 0,
+            hourlyRate = hourlyRate,
+            estimatedPay = PayrollCalculator.estimatePay(otDuration, 0, hourlyRate, ShiftType.OVERTIME, settings.overtimeEnabled, thresholdMinutes, settings.overtimeMultiplier, settings.workDayHours, settings.salaryAmount)
+        )
+        result += regularEntry
+        result += otEntry
+    }
+    saveEntries(prefs, result)
 }
 
 fun entriesForMonth(entries: List<ShiftEntry>, year: Int, month: Int): List<ShiftEntry> = entries.filter {

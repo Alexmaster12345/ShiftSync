@@ -34,6 +34,7 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var entries by remember { mutableStateOf(loadEntries(prefs)) }
     LaunchedEffect(Unit) { entries = loadEntries(prefs) }
+    var editingEntry by remember { mutableStateOf<ShiftEntry?>(null) }
     var activeStartMillis by remember { mutableLongStateOf(prefs.getLong(KEY_ACTIVE_START_MILLIS, NO_ACTIVE_SHIFT)) }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(activeStartMillis) { while (activeStartMillis > 0L) { delay(1000); nowMillis = System.currentTimeMillis() } }
@@ -104,7 +105,7 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
                 }
             }
             item { SectionTitle("RECENT ACTIVITY", "View All") }
-            items(entries.take(10)) { entry -> RecentEntryRow(entry, currency, settings.use24HourClock) }
+            items(entries.take(10)) { entry -> RecentEntryRow(entry, currency, settings.use24HourClock) { editingEntry = entry } }
             if (entries.isEmpty()) item {
                 AppCard(Modifier.fillMaxWidth()) {
                     Text("No entries yet", fontWeight = FontWeight.SemiBold)
@@ -112,6 +113,16 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
                 }
             }
         }
+    }
+
+    editingEntry?.let { entry ->
+        EditShiftDialog(
+            entry = entry,
+            settings = settings,
+            onDismiss = { editingEntry = null },
+            onSaved = { editingEntry = null; entries = loadEntries(prefs) },
+            onDeleted = { editingEntry = null; entries = loadEntries(prefs) }
+        )
     }
 }
 
@@ -129,5 +140,5 @@ private fun entriesForWeek(entries: List<ShiftEntry>, reference: Calendar): List
 
 @Composable private fun MiniStatBox(label: String, value: String, modifier: Modifier) = Surface(modifier = modifier, color = Color.White.copy(.16f), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(14.dp)) { Text(label, color = Color.White.copy(.75f), fontSize = 12.sp); Text(value, color = Color.White, fontWeight = FontWeight.Bold) } }
 @Composable private fun SummaryCard(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, note: String, noteColor: Color, modifier: Modifier, overtimeWarning: String? = null) = AppCard(modifier) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = ShiftBlue); Spacer(Modifier.width(8.dp)); Text(title, fontWeight = FontWeight.SemiBold) }; Spacer(Modifier.height(12.dp)); Text(value, fontSize = 26.sp, fontWeight = FontWeight.Bold); Spacer(Modifier.height(4.dp)); Text(note, color = noteColor, fontSize = 12.sp); if (overtimeWarning != null) { Spacer(Modifier.height(4.dp)); Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Warning, null, tint = OrangeAccent, modifier = Modifier.size(12.dp)); Spacer(Modifier.width(4.dp)); Text(overtimeWarning, color = OrangeAccent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) } } }
-@Composable private fun RecentEntryRow(entry: ShiftEntry, currency: String, use24HourClock: Boolean) = AppCard(Modifier.fillMaxWidth()) { Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(40.dp).clip(CircleShape).background(if (entry.shiftType == ShiftType.VACATION) GreenAccent.copy(.14f) else ShiftBlue.copy(.14f)), contentAlignment = Alignment.Center) { Icon(if (entry.shiftType == ShiftType.NIGHT) Icons.Default.Bedtime else if (entry.shiftType == ShiftType.VACATION) Icons.Default.WbSunny else Icons.Default.Schedule, null, tint = if (entry.shiftType == ShiftType.VACATION) GreenAccent else ShiftBlue) }; Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(if (Calendar.getInstance().apply { timeInMillis = entry.startedAtMillis }.let { it.get(Calendar.DAY_OF_YEAR) == Calendar.getInstance().get(Calendar.DAY_OF_YEAR) - 1 }) "Yesterday" else formatEntryDate(entry.startedAtMillis), fontWeight = FontWeight.SemiBold); Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, use24HourClock)} - ${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, use24HourClock)}", color = TextSecondary, fontSize = 13.sp) }; Column(horizontalAlignment = Alignment.End) { Text(formatDuration(entry.durationMinutes), fontWeight = FontWeight.Bold); Text(formatCurrency(entry.estimatedPay, currency), color = GreenAccent, fontWeight = FontWeight.SemiBold) } } }
+@Composable private fun RecentEntryRow(entry: ShiftEntry, currency: String, use24HourClock: Boolean, onClick: () -> Unit) = AppCard(Modifier.fillMaxWidth().clickable(onClick = onClick)) { Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(40.dp).clip(CircleShape).background(if (entry.shiftType == ShiftType.VACATION) GreenAccent.copy(.14f) else ShiftBlue.copy(.14f)), contentAlignment = Alignment.Center) { Icon(if (entry.shiftType == ShiftType.NIGHT) Icons.Default.Bedtime else if (entry.shiftType == ShiftType.VACATION) Icons.Default.WbSunny else Icons.Default.Schedule, null, tint = if (entry.shiftType == ShiftType.VACATION) GreenAccent else ShiftBlue) }; Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(if (Calendar.getInstance().apply { timeInMillis = entry.startedAtMillis }.let { it.get(Calendar.DAY_OF_YEAR) == Calendar.getInstance().get(Calendar.DAY_OF_YEAR) - 1 }) "Yesterday" else formatEntryDate(entry.startedAtMillis), fontWeight = FontWeight.SemiBold); Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, use24HourClock)} - ${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, use24HourClock)}", color = TextSecondary, fontSize = 13.sp) }; Column(horizontalAlignment = Alignment.End) { Text(formatDuration(entry.durationMinutes), fontWeight = FontWeight.Bold); Text(formatCurrency(entry.estimatedPay, currency), color = GreenAccent, fontWeight = FontWeight.SemiBold) } } }
 private fun Context.startClockService(action: String) { ContextCompat.startForegroundService(this, Intent(this, ClockForegroundService::class.java).apply { this.action = action }) }

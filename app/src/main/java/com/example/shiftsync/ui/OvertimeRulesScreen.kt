@@ -26,7 +26,27 @@ fun OvertimeRulesScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () -
     var weekly by remember { mutableDoubleStateOf(settings.overtimeWeeklyThresholdHours) }
     var multiplier by remember { mutableDoubleStateOf(settings.overtimeMultiplier) }
     var saved by remember { mutableStateOf(false) }
-    fun persist() { prefs.edit().putBoolean(KEY_OVERTIME_ENABLED, enabled).putFloat(KEY_OVERTIME_DAILY_THRESHOLD_HOURS, daily.toFloat()).putFloat(KEY_OVERTIME_WEEKLY_THRESHOLD_HOURS, weekly.toFloat()).putFloat(KEY_OVERTIME_MULTIPLIER, multiplier.toFloat()).apply(); onSaved() }
+    var showApplyChangeDialog by remember { mutableStateOf(false) }
+    // Snapshot of the rules that actually change past-shift math, captured when the screen
+    // opens, so Save can detect whether anything worth prompting about changed.
+    val initialEnabled = remember { settings.overtimeEnabled }
+    val initialDaily = remember { settings.overtimeDailyThresholdHours }
+    val initialMultiplier = remember { settings.overtimeMultiplier }
+    val rulesChanged = enabled != initialEnabled || daily != initialDaily || multiplier != initialMultiplier
+
+    fun persist() {
+        prefs.edit().putBoolean(KEY_OVERTIME_ENABLED, enabled).putFloat(KEY_OVERTIME_DAILY_THRESHOLD_HOURS, daily.toFloat()).putFloat(KEY_OVERTIME_WEEKLY_THRESHOLD_HOURS, weekly.toFloat()).putFloat(KEY_OVERTIME_MULTIPLIER, multiplier.toFloat()).apply()
+        onSaved()
+        saved = true
+    }
+    fun saveChanges() {
+        val hasExistingShifts = loadEntries(prefs).any { it.shiftType != ShiftType.VACATION }
+        if (rulesChanged && hasExistingShifts) {
+            showApplyChangeDialog = true
+        } else {
+            persist()
+        }
+    }
     LaunchedEffect(saved) {
         if (saved) {
             delay(1000)
@@ -41,9 +61,31 @@ fun OvertimeRulesScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () -
             AppCard { Text("Overtime Multiplier", fontWeight = FontWeight.Bold); Text("Pay rate for overtime hours", color = TextSecondary, fontSize = 13.sp); Spacer(Modifier.height(12.dp)); Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { listOf(1.2, 1.5, 2.0).forEach { value -> SegmentedOption("${value}×", multiplier == value, { multiplier = value }, Modifier.weight(1f), selectedColor = GreenAccent) } } }
             AppCard { Text("ℹ️ When you clock out after ${daily}h, ShiftSync automatically splits your shift: the first ${daily}h at regular pay and the rest at ${multiplier}× pay.", color = ShiftBlue, lineHeight = 20.sp) }
         }
-        SaveChangesButton(saved = saved) {
-            persist()
-            saved = true
-        }
+        SaveChangesButton(saved = saved, onClick = ::saveChanges)
+    }
+
+    if (showApplyChangeDialog) {
+        AlertDialog(
+            onDismissRequest = { showApplyChangeDialog = false },
+            title = { Text("Apply New Overtime Rules To Past Shifts?") },
+            text = { Text("You changed the overtime threshold, multiplier, or toggle. Should already-logged shifts be recalculated with the new rules, or keep the pay they already had?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val newSettings = settings.copy(overtimeEnabled = enabled, overtimeDailyThresholdHours = daily, overtimeMultiplier = multiplier)
+                    reapplyOvertimeRulesToExistingEntries(prefs, newSettings)
+                    showApplyChangeDialog = false
+                    persist()
+                }) { Text("Apply to All Shifts") }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        showApplyChangeDialog = false
+                        persist()
+                    }) { Text("Only Future Shifts") }
+                    TextButton(onClick = { showApplyChangeDialog = false }) { Text("Cancel") }
+                }
+            }
+        )
     }
 }
