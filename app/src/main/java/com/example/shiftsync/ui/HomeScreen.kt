@@ -26,14 +26,16 @@ import androidx.core.content.ContextCompat
 import com.example.shiftsync.*
 import com.example.shiftsync.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.*
 
 @Composable
 fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotifications: () -> Unit, onNavigate: (NavItem) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    var entries by remember { mutableStateOf(loadEntries(prefs)) }
-    LaunchedEffect(Unit) { entries = loadEntries(prefs) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { ShiftRepository.migrateLegacyEntriesIfNeeded(prefs) }
+    val entries by ShiftRepository.observeAll().collectAsState(initial = emptyList())
     var editingEntry by remember { mutableStateOf<ShiftEntry?>(null) }
     var activeStartMillis by remember { mutableLongStateOf(prefs.getLong(KEY_ACTIVE_START_MILLIS, NO_ACTIVE_SHIFT)) }
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -91,17 +93,21 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
                             } else {
                                 val settingsNow = loadSettings(prefs)
                                 val hourly = PayrollCalculator.hourlyRate(settingsNow)
-                                val entry = ShiftEntry(activeStartMillis, ShiftType.REGULAR, activeDurationMin, 0, hourly, PayrollCalculator.estimatePay(activeDurationMin, 0, hourly, ShiftType.REGULAR, settingsNow.overtimeEnabled, (settingsNow.overtimeDailyThresholdHours * 60).toLong(), settingsNow.overtimeMultiplier, settingsNow.workDayHours, settingsNow.salaryAmount))
-                                saveEntries(prefs, listOf(entry) + loadEntries(prefs)); prefs.edit().remove(KEY_ACTIVE_START_MILLIS).apply(); activeStartMillis = NO_ACTIVE_SHIFT; entries = loadEntries(prefs); context.startClockService(ClockForegroundService.ACTION_STOP); ShiftAlertHelper.fireShiftEndAlert(context, activeDurationMin)
+                                val entry = ShiftEntry(startedAtMillis = activeStartMillis, shiftType = ShiftType.REGULAR, durationMinutes = activeDurationMin, unpaidBreakMinutes = 0, hourlyRate = hourly, estimatedPay = PayrollCalculator.estimatePay(activeDurationMin, 0, hourly, ShiftType.REGULAR, settingsNow.overtimeEnabled, (settingsNow.overtimeDailyThresholdHours * 60).toLong(), settingsNow.overtimeMultiplier, settingsNow.workDayHours, settingsNow.salaryAmount))
+                                scope.launch { ShiftRepository.add(entry) }
+                                prefs.edit().remove(KEY_ACTIVE_START_MILLIS).apply(); activeStartMillis = NO_ACTIVE_SHIFT; context.startClockService(ClockForegroundService.ACTION_STOP); ShiftAlertHelper.fireShiftEndAlert(context, activeDurationMin)
                             }
                         }, colors = ButtonDefaults.buttonColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth().height(48.dp)) { Text(if (activeStartMillis > 0L) "Clock Out" else "Clock In", color = ShiftBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     }
                 }
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SummaryCard("This Week", Icons.Default.CalendarMonth, formatDuration(weekMinutes), weekComparisonText, GreenAccent, Modifier.weight(1f), overtimeWarning = if (settings.overtimeEnabled && weekMinutes > (settings.overtimeWeeklyThresholdHours * 60).toLong()) "Over ${settings.overtimeWeeklyThresholdHours.toInt()}h/week limit" else null)
-                    SummaryCard("This Month", Icons.Default.GridView, formatDuration(monthMinutes), "${monthEntries.size} shifts total", TextSecondary, Modifier.weight(1f))
+                // IntrinsicSize.Min + fillMaxHeight so both cards match the taller one's height —
+                // otherwise a wrapped note (e.g. the week comparison text at large font scales)
+                // stretches only that card, leaving the other short and visually mismatched.
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SummaryCard("This Week", Icons.Default.CalendarMonth, formatDuration(weekMinutes), weekComparisonText, GreenAccent, Modifier.weight(1f).fillMaxHeight(), overtimeWarning = if (settings.overtimeEnabled && weekMinutes > (settings.overtimeWeeklyThresholdHours * 60).toLong()) "Over ${settings.overtimeWeeklyThresholdHours.toInt()}h/week limit" else null)
+                    SummaryCard("This Month", Icons.Default.GridView, formatDuration(monthMinutes), "${monthEntries.size} shifts total", TextSecondary, Modifier.weight(1f).fillMaxHeight())
                 }
             }
             item { SectionTitle("RECENT ACTIVITY", "View All") }
@@ -120,8 +126,8 @@ fun HomeScreen(settings: AppSettings, onAddManualEntry: () -> Unit, onNotificati
             entry = entry,
             settings = settings,
             onDismiss = { editingEntry = null },
-            onSaved = { editingEntry = null; entries = loadEntries(prefs) },
-            onDeleted = { editingEntry = null; entries = loadEntries(prefs) }
+            onSaved = { editingEntry = null },
+            onDeleted = { editingEntry = null }
         )
     }
 }
@@ -140,5 +146,23 @@ private fun entriesForWeek(entries: List<ShiftEntry>, reference: Calendar): List
 
 @Composable private fun MiniStatBox(label: String, value: String, modifier: Modifier) = Surface(modifier = modifier, color = Color.White.copy(.16f), shape = RoundedCornerShape(18.dp)) { Column(Modifier.padding(14.dp)) { Text(label, color = Color.White.copy(.75f), fontSize = 12.sp); Text(value, color = Color.White, fontWeight = FontWeight.Bold) } }
 @Composable private fun SummaryCard(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, note: String, noteColor: Color, modifier: Modifier, overtimeWarning: String? = null) = AppCard(modifier) { Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = ShiftBlue); Spacer(Modifier.width(8.dp)); Text(title, fontWeight = FontWeight.SemiBold) }; Spacer(Modifier.height(12.dp)); Text(value, fontSize = 26.sp, fontWeight = FontWeight.Bold); Spacer(Modifier.height(4.dp)); Text(note, color = noteColor, fontSize = 12.sp); if (overtimeWarning != null) { Spacer(Modifier.height(4.dp)); Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Warning, null, tint = OrangeAccent, modifier = Modifier.size(12.dp)); Spacer(Modifier.width(4.dp)); Text(overtimeWarning, color = OrangeAccent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) } } }
-@Composable private fun RecentEntryRow(entry: ShiftEntry, currency: String, use24HourClock: Boolean, onClick: () -> Unit) = AppCard(Modifier.fillMaxWidth().clickable(onClick = onClick)) { Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(40.dp).clip(CircleShape).background(if (entry.shiftType == ShiftType.VACATION) GreenAccent.copy(.14f) else ShiftBlue.copy(.14f)), contentAlignment = Alignment.Center) { Icon(if (entry.shiftType == ShiftType.NIGHT) Icons.Default.Bedtime else if (entry.shiftType == ShiftType.VACATION) Icons.Default.WbSunny else Icons.Default.Schedule, null, tint = if (entry.shiftType == ShiftType.VACATION) GreenAccent else ShiftBlue) }; Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(if (Calendar.getInstance().apply { timeInMillis = entry.startedAtMillis }.let { it.get(Calendar.DAY_OF_YEAR) == Calendar.getInstance().get(Calendar.DAY_OF_YEAR) - 1 }) "Yesterday" else formatEntryDate(entry.startedAtMillis), fontWeight = FontWeight.SemiBold); Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, use24HourClock)} - ${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, use24HourClock)}", color = TextSecondary, fontSize = 13.sp) }; Column(horizontalAlignment = Alignment.End) { Text(formatDuration(entry.durationMinutes), fontWeight = FontWeight.Bold); Text(formatCurrency(entry.estimatedPay, currency), color = GreenAccent, fontWeight = FontWeight.SemiBold) } } }
+@Composable private fun RecentEntryRow(entry: ShiftEntry, currency: String, use24HourClock: Boolean, onClick: () -> Unit): Unit {
+    val (icon, tint) = shiftTypeVisual(entry.shiftType)
+    AppCard(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = tint)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(if (Calendar.getInstance().apply { timeInMillis = entry.startedAtMillis }.let { it.get(Calendar.DAY_OF_YEAR) == Calendar.getInstance().get(Calendar.DAY_OF_YEAR) - 1 }) "Yesterday" else formatEntryDate(entry.startedAtMillis), fontWeight = FontWeight.SemiBold)
+                Text(if (entry.shiftType.isDayType) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, use24HourClock)} - ${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, use24HourClock)}", color = TextSecondary, fontSize = 13.sp)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(formatDuration(entry.durationMinutes), fontWeight = FontWeight.Bold)
+                Text(formatCurrency(entry.estimatedPay, currency), color = GreenAccent, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
 private fun Context.startClockService(action: String) { ContextCompat.startForegroundService(this, Intent(this, ClockForegroundService::class.java).apply { this.action = action }) }

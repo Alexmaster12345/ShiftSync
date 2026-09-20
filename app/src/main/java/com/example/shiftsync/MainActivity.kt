@@ -6,10 +6,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -20,8 +22,13 @@ import com.example.shiftsync.ui.theme.ShiftSyncTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Dismisses the system-drawn starting window (Theme.ShiftSync.Starting) as soon as
+        // the first Compose frame is ready, instead of it staying up as a separate splash
+        // before our own SplashScreen composable gets a chance to show.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ShiftRepository.init(applicationContext)
         setContent { ShiftSyncRoot() }
     }
 }
@@ -68,6 +75,24 @@ private fun ShiftSyncRoot() {
     val scaledDensity = remember(settings.uiTextSizeIndex, systemDensity.density, systemDensity.fontScale) {
         Density(systemDensity.density, settings.uiTextFontScale(systemDensity.fontScale))
     }
+
+    // The screen enum here is a flat state switch, not a real back-stack-aware navigation
+    // component (Compose Navigation etc.) — without this, the system back gesture/button
+    // falls through to the Activity default and exits the app from any non-Home screen,
+    // instead of retracing the same steps the in-screen back arrows already take.
+    val goBack: () -> Unit = {
+        when (screen) {
+            Screen.NOTIFICATIONS, Screen.MANUAL_ENTRY -> { screen = Screen.HOME; refresh() }
+            Screen.CALENDAR, Screen.WORKPLACE, Screen.PROFILE -> screen = Screen.HOME
+            Screen.MAP_PICKER -> screen = Screen.WORKPLACE
+            Screen.APPEARANCE, Screen.NOTIFICATION_SETTINGS, Screen.PERSONAL_INFO,
+            Screen.OVERTIME_RULES, Screen.SECURITY_PRIVACY -> { refresh(); screen = Screen.PROFILE }
+            Screen.EXPORT_REPORTS, Screen.HOW_TO_USE, Screen.TERMS_OF_USE, Screen.PRIVACY_POLICY -> screen = Screen.PROFILE
+            Screen.SALARY_CURRENCY -> { refresh(); screen = salaryCurrencyOrigin }
+            Screen.SPLASH, Screen.LOGIN, Screen.HOME -> Unit
+        }
+    }
+    BackHandler(enabled = !splashVisible && screen != Screen.HOME && screen != Screen.LOGIN, onBack = goBack)
 
     ShiftSyncTheme(settings.appearance) {
       CompositionLocalProvider(LocalDensity provides scaledDensity) {

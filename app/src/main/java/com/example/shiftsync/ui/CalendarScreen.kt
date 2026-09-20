@@ -36,7 +36,8 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val settings = loadSettings(prefs)
-    var entries by remember { mutableStateOf(loadEntries(prefs)) }
+    LaunchedEffect(Unit) { ShiftRepository.migrateLegacyEntriesIfNeeded(prefs) }
+    val entries by ShiftRepository.observeAll().collectAsState(initial = emptyList())
     var editingEntry by remember { mutableStateOf<ShiftEntry?>(null) }
     val today = Calendar.getInstance()
     var month by remember { mutableIntStateOf(today.get(Calendar.MONTH)) }
@@ -115,11 +116,11 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(entry.shiftType.label, fontWeight = FontWeight.Bold)
-                            Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, settings.use24HourClock)} - ${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, settings.use24HourClock)}", color = TextSecondary, fontSize = 13.sp)
+                            Text(if (entry.shiftType.isDayType) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, settings.use24HourClock)} - ${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, settings.use24HourClock)}", color = TextSecondary, fontSize = 13.sp)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text(formatDuration(entry.durationMinutes), fontWeight = FontWeight.Bold)
-                            Text("COMPLETED", color = if (entry.shiftType == ShiftType.VACATION) GreenAccent else TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("COMPLETED", color = if (entry.shiftType.isDayType) GreenAccent else TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -132,8 +133,8 @@ fun CalendarScreen(onNavigate: (NavItem) -> Unit) {
             entry = entry,
             settings = settings,
             onDismiss = { editingEntry = null },
-            onSaved = { editingEntry = null; entries = loadEntries(prefs) },
-            onDeleted = { editingEntry = null; entries = loadEntries(prefs) }
+            onSaved = { editingEntry = null },
+            onDeleted = { editingEntry = null }
         )
     }
 }

@@ -114,7 +114,7 @@ fun BottomNavBar(selected: NavItem, onNavigate: (NavItem) -> Unit, modifier: Mod
                     Box(
                         Modifier.size(46.dp).clip(RoundedCornerShape(16.dp)).background(ShiftBlue).clickable { onNavigate(NavItem.Add) },
                         contentAlignment = Alignment.Center
-                    ) { Icon(Icons.Default.Add, null, tint = Color.White) }
+                    ) { Icon(Icons.Default.Add, NavItem.Add.label, tint = Color.White) }
                 }
                 listOf(NavItem.Workplace, NavItem.Profile).forEach { item -> NavButton(item, selected == item, onNavigate) }
             }
@@ -124,15 +124,36 @@ fun BottomNavBar(selected: NavItem, onNavigate: (NavItem) -> Unit, modifier: Mod
 
 @Composable
 private fun NavButton(item: NavItem, active: Boolean, onNavigate: (NavItem) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(48.dp).clickable { onNavigate(item) }) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(48.dp).clickable(onClickLabel = item.label) { onNavigate(item) }
+    ) {
         Box(
             Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(if (active) ShiftBlue.copy(.14f) else Color.Transparent),
             contentAlignment = Alignment.Center
-        ) { Icon(item.icon, null, tint = if (active) ShiftBlue else TextSecondary, modifier = Modifier.size(22.dp)) }
+        ) { Icon(item.icon, item.label, tint = if (active) ShiftBlue else TextSecondary, modifier = Modifier.size(22.dp)) }
     }
 }
 
-enum class NavItem(val icon: ImageVector) { Home(Icons.Default.Home), Calendar(Icons.Default.CalendarMonth), Add(Icons.Default.Add), Workplace(Icons.Default.LocationOn), Profile(Icons.Default.Person) }
+enum class NavItem(val icon: ImageVector, val label: String) {
+    Home(Icons.Default.Home, "Home"),
+    Calendar(Icons.Default.CalendarMonth, "Calendar"),
+    Add(Icons.Default.Add, "Add Shift"),
+    Workplace(Icons.Default.LocationOn, "Workplace"),
+    Profile(Icons.Default.Person, "Profile")
+}
+
+/** Icon + accent color used to represent a shift type in entry rows (Home, Calendar). */
+fun shiftTypeVisual(type: com.example.shiftsync.ShiftType): Pair<ImageVector, Color> = when (type) {
+    com.example.shiftsync.ShiftType.VACATION -> Icons.Default.WbSunny to GreenAccent
+    com.example.shiftsync.ShiftType.SICK -> Icons.Default.LocalHospital to RedAccent
+    com.example.shiftsync.ShiftType.FORMATION -> Icons.Default.School to OrangeAccent
+    com.example.shiftsync.ShiftType.HOLIDAY -> Icons.Default.Star to ShiftBlue
+    com.example.shiftsync.ShiftType.COMPANY_FUN_DAY -> Icons.Default.Celebration to GreenAccent
+    com.example.shiftsync.ShiftType.NIGHT -> Icons.Default.Bedtime to ShiftBlue
+    com.example.shiftsync.ShiftType.OVERTIME -> Icons.Default.Schedule to OrangeAccent
+    com.example.shiftsync.ShiftType.REGULAR -> Icons.Default.Schedule to ShiftBlue
+}
 
 @Composable
 fun SegmentedOption(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, selectedColor: Color = ShiftBlue) {

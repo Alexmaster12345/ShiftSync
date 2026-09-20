@@ -40,6 +40,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private enum class ReportPeriod(val label: String) { WEEK("This Week"), MONTH("This Month"), YEAR("This Year"), ALL("All Time") }
 
@@ -61,7 +62,8 @@ private fun currencyIcon(symbol: String) = when (symbol) {
 fun ExportReportsScreen(settings: AppSettings, onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    val entries = remember { loadEntries(prefs) }
+    LaunchedEffect(Unit) { ShiftRepository.migrateLegacyEntriesIfNeeded(prefs) }
+    val entries by ShiftRepository.observeAll().collectAsState(initial = emptyList())
     var period by remember { mutableStateOf(ReportPeriod.MONTH) }
     val filtered = remember(period, entries) { filterEntries(entries, period) }
     val totalMinutes = filtered.sumOf { it.durationMinutes }
@@ -74,7 +76,7 @@ fun ExportReportsScreen(settings: AppSettings, onBack: () -> Unit) {
         AppCard { SimpleRow(Icons.Default.TableChart, GreenAccent, "Export as CSV", "Open in Numbers, Excel, or any spreadsheet app", trailing = { Icon(Icons.Default.OpenInNew, null, tint = GreenAccent) }, onClick = { shareCsv(context, settings, filtered, period) }) }
         AppCard { SimpleRow(Icons.Default.PictureAsPdf, ShiftBlue, "Export as PDF", "Formatted report for payslips or records", trailing = { Icon(Icons.Default.OpenInNew, null, tint = ShiftBlue) }, onClick = { sharePdf(context, settings, filtered, period) }) }
         Text("PREVIEW", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        filtered.forEach { entry -> AppCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Column { Text(formatDate(entry.startedAtMillis), fontWeight = FontWeight.Bold); Text(entry.shiftType.label, color = TextSecondary); Text(if (entry.shiftType == ShiftType.VACATION) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, settings.use24HourClock)}-${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, settings.use24HourClock)}", color = TextSecondary, fontSize = 12.sp) }; Text(formatCurrency(entry.estimatedPay, settings.currencySymbol), color = GreenAccent, fontWeight = FontWeight.Bold) } } }
+        filtered.forEach { entry -> AppCard { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Column { Text(formatDate(entry.startedAtMillis), fontWeight = FontWeight.Bold); Text(entry.shiftType.label, color = TextSecondary); Text(if (entry.shiftType.isDayType) "Paid day off" else "${formatShiftTime(entry.startedAtMillis, settings.use24HourClock)}-${formatShiftTime(entry.startedAtMillis + entry.durationMinutes * 60000, settings.use24HourClock)}", color = TextSecondary, fontSize = 12.sp) }; Text(formatCurrency(entry.estimatedPay, settings.currencySymbol), color = GreenAccent, fontWeight = FontWeight.Bold) } } }
     }
 }
 
@@ -82,6 +84,7 @@ fun ExportReportsScreen(settings: AppSettings, onBack: () -> Unit) {
 fun SecurityPrivacyScreen(onBack: () -> Unit, onCleared: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    val scope = rememberCoroutineScope()
     var showConfirm by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf<String?>(null) }
     var pendingImportCount by remember { mutableStateOf<Int?>(null) }
@@ -97,9 +100,9 @@ fun SecurityPrivacyScreen(onBack: () -> Unit, onCleared: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(8.dp)); HeaderWithBack("Security & Privacy", onBack)
         AppCard { SimpleRow(Icons.Default.Shield, ShiftBlue, "Data stored locally", "All shift data lives only on this device. Nothing is sent to external servers."); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.CheckCircle, GreenAccent, "No account required", "ShiftSync works without sign-up. Your data stays private and is never shared.") }
-        AppCard { SimpleRow(Icons.Default.UploadFile, GreenAccent, "Export Backup (JSON)", "Save your shift records to transfer to a new device", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { shareJsonBackup(context, prefs) }); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.Download, ShiftBlue, "Import Backup", "Restore shift records from a previously exported file", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { picker.launch(arrayOf("application/json")) }) }
+        AppCard { SimpleRow(Icons.Default.UploadFile, GreenAccent, "Export Backup (JSON)", "Save your shift records to transfer to a new device", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { scope.launch { shareJsonBackup(context, prefs, ShiftRepository.getAllOnce()) } }); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.Download, ShiftBlue, "Import Backup", "Restore shift records from a previously exported file", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { picker.launch(arrayOf("application/json")) }) }
         AppCard { SimpleRow(Icons.Default.Delete, RedAccent, "Clear All Data", "Deletes all shifts, settings, and profile info", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = RedAccent) }, onClick = { showConfirm = true }) }
-        if (showConfirm) AlertDialog(onDismissRequest = { showConfirm = false }, confirmButton = { TextButton(onClick = { prefs.edit().clear().apply(); showConfirm = false; onCleared() }) { Text("Clear", color = RedAccent) } }, dismissButton = { TextButton({ showConfirm = false }) { Text("Cancel") } }, title = { Text("Clear all data?") }, text = { Text("This removes all shifts, settings, and profile information from this device.") })
+        if (showConfirm) AlertDialog(onDismissRequest = { showConfirm = false }, confirmButton = { TextButton(onClick = { prefs.edit().clear().apply(); scope.launch { ShiftRepository.clearAll() }; showConfirm = false; onCleared() }) { Text("Clear", color = RedAccent) } }, dismissButton = { TextButton({ showConfirm = false }) { Text("Cancel") } }, title = { Text("Clear all data?") }, text = { Text("This removes all shifts, settings, and profile information from this device.") })
         if (pendingImport != null) {
             AlertDialog(
                 onDismissRequest = {
@@ -108,10 +111,13 @@ fun SecurityPrivacyScreen(onBack: () -> Unit, onCleared: () -> Unit) {
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        importPrefsFromJson(context, prefs, pendingImport.orEmpty())
-                        pendingImport = null
-                        pendingImportCount = null
-                        onBack()
+                        val entries = importPrefsFromJson(context, prefs, pendingImport.orEmpty())
+                        scope.launch {
+                            ShiftRepository.replaceAll(entries)
+                            pendingImport = null
+                            pendingImportCount = null
+                            onBack()
+                        }
                     }) { Text("Import", color = ShiftBlue) }
                 },
                 dismissButton = {
@@ -455,5 +461,5 @@ private fun sharePdf(context: Context, settings: AppSettings, entries: List<Shif
     entries.forEach { canvas.drawText("${formatEntryDate(it.startedAtMillis)}  ${it.shiftType.label}  ${formatDuration(it.durationMinutes)}  ${formatCurrency(it.estimatedPay, settings.currencySymbol)}", 40f, y, paint); y += 18 }
     pdf.finishPage(page); file.outputStream().use { pdf.writeTo(it) }; pdf.close(); shareFile(context, file, "application/pdf")
 }
-private fun shareJsonBackup(context: Context, prefs: android.content.SharedPreferences) { val file = File(context.cacheDir, "shiftsync-backup.json"); file.writeText(exportPrefsToJson(prefs).toString(2)); shareFile(context, file, "application/json") }
+private fun shareJsonBackup(context: Context, prefs: android.content.SharedPreferences, entries: List<ShiftEntry>) { val file = File(context.cacheDir, "shiftsync-backup.json"); file.writeText(exportPrefsToJson(prefs, entries).toString(2)); shareFile(context, file, "application/json") }
 private fun shareFile(context: Context, file: File, mimeType: String) { val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file); context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { putExtra(Intent.EXTRA_STREAM, uri); type = mimeType; addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }, "Share")) }

@@ -16,11 +16,13 @@ import androidx.compose.ui.unit.sp
 import com.example.shiftsync.*
 import com.example.shiftsync.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun OvertimeRulesScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    val scope = rememberCoroutineScope()
     var enabled by remember { mutableStateOf(settings.overtimeEnabled) }
     var daily by remember { mutableDoubleStateOf(settings.overtimeDailyThresholdHours) }
     var weekly by remember { mutableDoubleStateOf(settings.overtimeWeeklyThresholdHours) }
@@ -40,11 +42,10 @@ fun OvertimeRulesScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () -
         saved = true
     }
     fun saveChanges() {
-        val hasExistingShifts = loadEntries(prefs).any { it.shiftType != ShiftType.VACATION }
-        if (rulesChanged && hasExistingShifts) {
-            showApplyChangeDialog = true
-        } else {
-            persist()
+        if (!rulesChanged) { persist(); return }
+        scope.launch {
+            val hasExistingShifts = ShiftRepository.getAllOnce().any { !it.shiftType.isDayType }
+            if (hasExistingShifts) showApplyChangeDialog = true else persist()
         }
     }
     LaunchedEffect(saved) {
@@ -72,9 +73,12 @@ fun OvertimeRulesScreen(settings: AppSettings, onBack: () -> Unit, onSaved: () -
             confirmButton = {
                 TextButton(onClick = {
                     val newSettings = settings.copy(overtimeEnabled = enabled, overtimeDailyThresholdHours = daily, overtimeMultiplier = multiplier)
-                    reapplyOvertimeRulesToExistingEntries(prefs, newSettings)
-                    showApplyChangeDialog = false
-                    persist()
+                    scope.launch {
+                        val resplit = reapplyOvertimeRulesToEntries(ShiftRepository.getAllOnce(), newSettings)
+                        ShiftRepository.replaceAll(resplit)
+                        showApplyChangeDialog = false
+                        persist()
+                    }
                 }) { Text("Apply to All Shifts") }
             },
             dismissButton = {

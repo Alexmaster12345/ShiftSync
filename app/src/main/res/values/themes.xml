@@ -2,4 +2,14 @@
 <resources>
 
     <style name="Theme.ShiftSync" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Shown for the brief system-controlled window before onCreate/setContent run.
+         installSplashScreen() in MainActivity dismisses this as soon as the first Compose
+         frame draws, so it hands off straight into the app's own SplashScreen composable
+         instead of showing a separate icon splash first. -->
+    <style name="Theme.ShiftSync.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.ShiftSync</item>
+    </style>
 </resources>

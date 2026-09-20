@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.shiftsync.*
 import com.example.shiftsync.ui.theme.*
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -35,8 +36,8 @@ fun EditShiftDialog(
     onDeleted: () -> Unit
 ) {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    val isDayType = entry.shiftType == ShiftType.VACATION
+    val scope = rememberCoroutineScope()
+    val isDayType = entry.shiftType.isDayType
 
     var dateMillis by remember { mutableLongStateOf(entry.startedAtMillis) }
     val startCal = remember { Calendar.getInstance().apply { timeInMillis = entry.startedAtMillis } }
@@ -93,7 +94,7 @@ fun EditShiftDialog(
             hourlyRate = hourlyRate,
             estimatedPay = pay
         )
-        updateEntry(prefs, entry.id, updated)
+        scope.launch { ShiftRepository.update(updated) }
         onSaved()
     }
 
@@ -185,7 +186,7 @@ fun EditShiftDialog(
             text = { Text("This shift record will be permanently deleted. This cannot be undone.") },
             confirmButton = {
                 TextButton(onClick = {
-                    deleteEntry(prefs, entry.id)
+                    scope.launch { ShiftRepository.delete(entry.id) }
                     showDeleteConfirm = false
                     onDeleted()
                 }) { Text("Delete", color = RedAccent) }
