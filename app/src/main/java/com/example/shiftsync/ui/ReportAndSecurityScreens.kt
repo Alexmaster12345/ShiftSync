@@ -1,10 +1,14 @@
 package com.example.shiftsync.ui
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -81,10 +85,11 @@ fun ExportReportsScreen(settings: AppSettings, onBack: () -> Unit) {
 }
 
 @Composable
-fun SecurityPrivacyScreen(onBack: () -> Unit, onCleared: () -> Unit) {
+fun SecurityPrivacyScreen(settings: AppSettings, onBack: () -> Unit, onCleared: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
+    var appLockEnabled by remember { mutableStateOf(settings.appLockEnabled) }
     var showConfirm by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf<String?>(null) }
     var pendingImportCount by remember { mutableStateOf<Int?>(null) }
@@ -100,6 +105,13 @@ fun SecurityPrivacyScreen(onBack: () -> Unit, onCleared: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(8.dp)); HeaderWithBack("Security & Privacy", onBack)
         AppCard { SimpleRow(Icons.Default.Shield, ShiftBlue, "Data stored locally", "All shift data lives only on this device. Nothing is sent to external servers."); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.CheckCircle, GreenAccent, "No account required", "ShiftSync works without sign-up. Your data stays private and is never shared.") }
+        AppCard {
+            SimpleRow(
+                Icons.Default.Fingerprint, ShiftBlue, "App Lock",
+                if (appLockEnabled) "On — fingerprint, face, or device PIN required" else "Off",
+                trailing = { Switch(checked = appLockEnabled, onCheckedChange = { appLockEnabled = it; prefs.edit().putBoolean(KEY_APP_LOCK_ENABLED, it).apply(); if (!it) AppLockManager.lock(false) }) }
+            )
+        }
         AppCard { SimpleRow(Icons.Default.UploadFile, GreenAccent, "Export Backup (JSON)", "Save your shift records to transfer to a new device", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { scope.launch { shareJsonBackup(context, prefs, ShiftRepository.getAllOnce()) } }); HorizontalDivider(color = BorderColor); SimpleRow(Icons.Default.Download, ShiftBlue, "Import Backup", "Restore shift records from a previously exported file", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = TextMuted) }, onClick = { picker.launch(arrayOf("application/json")) }) }
         AppCard { SimpleRow(Icons.Default.Delete, RedAccent, "Clear All Data", "Deletes all shifts, settings, and profile info", trailing = { Icon(Icons.Default.KeyboardArrowRight, null, tint = RedAccent) }, onClick = { showConfirm = true }) }
         if (showConfirm) AlertDialog(onDismissRequest = { showConfirm = false }, confirmButton = { TextButton(onClick = { prefs.edit().clear().apply(); scope.launch { ShiftRepository.clearAll() }; showConfirm = false; onCleared() }) { Text("Clear", color = RedAccent) } }, dismissButton = { TextButton({ showConfirm = false }) { Text("Cancel") } }, title = { Text("Clear all data?") }, text = { Text("This removes all shifts, settings, and profile information from this device.") })
@@ -462,4 +474,37 @@ private fun sharePdf(context: Context, settings: AppSettings, entries: List<Shif
     pdf.finishPage(page); file.outputStream().use { pdf.writeTo(it) }; pdf.close(); shareFile(context, file, "application/pdf")
 }
 private fun shareJsonBackup(context: Context, prefs: android.content.SharedPreferences, entries: List<ShiftEntry>) { val file = File(context.cacheDir, "shiftsync-backup.json"); file.writeText(exportPrefsToJson(prefs, entries).toString(2)); shareFile(context, file, "application/json") }
-private fun shareFile(context: Context, file: File, mimeType: String) { val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file); context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { putExtra(Intent.EXTRA_STREAM, uri); type = mimeType; addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }, "Share")) }
+private fun shareFile(context: Context, file: File, mimeType: String) {
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        putExtra(Intent.EXTRA_STREAM, uri)
+        type = mimeType
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(sendIntent, "Share", exportCleanupIntentSender(context, file)))
+}
+
+// Deletes the temp export file out of cacheDir once the user picks a target app from the
+// chooser, instead of leaving the report sitting there indefinitely. Fires only when a target
+// is actually chosen (Android gives no signal on chooser cancel), but the cache directory is
+// also subject to routine OS cleanup, so a cancelled share doesn't leak the file forever either.
+private fun exportCleanupIntentSender(context: Context, file: File): android.content.IntentSender {
+    val cleanupAction = "com.example.shiftsync.EXPORT_SHARED.${file.name}.${System.currentTimeMillis()}"
+    val receiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            file.delete()
+            ctx.unregisterReceiver(this)
+        }
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        context.registerReceiver(receiver, IntentFilter(cleanupAction), Context.RECEIVER_NOT_EXPORTED)
+    } else {
+        @Suppress("UnspecifiedRegisterReceiverFlag")
+        context.registerReceiver(receiver, IntentFilter(cleanupAction))
+    }
+    val pendingIntent = PendingIntent.getBroadcast(
+        context, 0, Intent(cleanupAction).setPackage(context.packageName),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    return pendingIntent.intentSender
+}

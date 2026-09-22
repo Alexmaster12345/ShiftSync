@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -15,18 +15,25 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.Density
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.example.shiftsync.ui.*
 import com.example.shiftsync.ui.theme.ShiftSyncTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Dismisses the system-drawn starting window (Theme.ShiftSync.Starting) as soon as
         // the first Compose frame is ready, instead of it staying up as a separate splash
         // before our own SplashScreen composable gets a chance to show.
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Prevents shift/earnings data from being captured in the recent-apps switcher preview
+        // or by screenshots/screen recording, regardless of whether App Lock is turned on.
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         enableEdgeToEdge()
         ShiftRepository.init(applicationContext)
         setContent { ShiftSyncRoot() }
@@ -54,6 +61,18 @@ private fun ShiftSyncRoot() {
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         prefs.edit().putBoolean(KEY_AUTO_GEOFENCING, granted).apply(); refresh()
     }
+
+    // Locks on cold start (mirrors iOS's ContentView.onAppear) and again every time the app
+    // leaves the foreground, so returning from the background/recents always re-prompts.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) AppLockManager.lock(settings.appLockEnabled)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(Unit) { AppLockManager.lock(settings.appLockEnabled) }
     LaunchedEffect(screen) {
         if (screen == Screen.HOME) {
             val missingPermissions = mutableListOf<String>()
@@ -103,6 +122,8 @@ private fun ShiftSyncRoot() {
                 splashVisible = false
                 screen = Screen.HOME
             }
+        } else if (settings.appLockEnabled && !AppLockManager.isUnlocked) {
+            AppLockOverlay(onUnlock = { (context as? FragmentActivity)?.let { AppLockManager.authenticate(it) } })
         } else when (screen) {
             Screen.SPLASH -> SplashScreen()
             Screen.LOGIN -> LoginScreen { name ->
@@ -152,6 +173,7 @@ private fun ShiftSyncRoot() {
             Screen.EXPORT_REPORTS -> ExportReportsScreen(settings, onBack = { screen = Screen.PROFILE })
             Screen.HOW_TO_USE -> HowToUseScreen(onBack = { screen = Screen.PROFILE })
             Screen.SECURITY_PRIVACY -> SecurityPrivacyScreen(
+               settings = settings,
                onBack = { refresh(); screen = Screen.PROFILE },
                onCleared = { refresh(); screen = Screen.LOGIN }
             )

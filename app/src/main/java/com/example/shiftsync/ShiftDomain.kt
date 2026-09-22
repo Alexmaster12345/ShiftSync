@@ -68,7 +68,10 @@ data class AppSettings(
     // In-app text size, independent of the device's own display-size setting — index into
     // TEXT_SIZE_LABELS/TEXT_SIZE_SCALE_STEPS below. SYSTEM_DEFAULT_TEXT_SIZE_INDEX ("Default")
     // means "just follow the device's own font scale" rather than forcing a fixed size.
-    val uiTextSizeIndex: Int = SYSTEM_DEFAULT_TEXT_SIZE_INDEX
+    val uiTextSizeIndex: Int = SYSTEM_DEFAULT_TEXT_SIZE_INDEX,
+    // Off by default — opt-in biometric/device-credential gate on launch and on returning
+    // from the background, toggled in Security & Privacy.
+    val appLockEnabled: Boolean = false
 ) {
     companion object {
         const val SYSTEM_DEFAULT_TEXT_SIZE_INDEX = 3
@@ -166,6 +169,7 @@ const val KEY_WORK_FROM_HOME_ENABLED = "work_from_home_enabled"
 const val KEY_OFFICE_DAYS = "office_days"
 const val KEY_HOME_DAYS = "home_days"
 const val KEY_UI_TEXT_SIZE_INDEX = "ui_text_size_index"
+const val KEY_APP_LOCK_ENABLED = "app_lock_enabled"
 
 val DEFAULT_REMINDER_DAYS: Set<String> = setOf("2", "3", "4", "5", "6")
 private const val ENTRY_DELIMITER = ";"
@@ -202,7 +206,8 @@ fun loadSettings(prefs: SharedPreferences): AppSettings = AppSettings(
         KEY_HOME_DAYS,
         if (prefs.contains(KEY_HOME_DAYS)) emptySet() else prefs.getStringSet(KEY_REMINDER_CLOCK_IN_DAYS, DEFAULT_REMINDER_DAYS)?.toSet() ?: emptySet()
     )?.toSet() ?: emptySet(),
-    uiTextSizeIndex = prefs.getInt(KEY_UI_TEXT_SIZE_INDEX, AppSettings.SYSTEM_DEFAULT_TEXT_SIZE_INDEX)
+    uiTextSizeIndex = prefs.getInt(KEY_UI_TEXT_SIZE_INDEX, AppSettings.SYSTEM_DEFAULT_TEXT_SIZE_INDEX),
+    appLockEnabled = prefs.getBoolean(KEY_APP_LOCK_ENABLED, false)
 )
 
 fun formatDate(epochMillis: Long): String = SimpleDateFormat("d MMM", Locale.getDefault()).format(Date(epochMillis))
@@ -298,10 +303,35 @@ fun parseLegacyEntries(payload: String?): List<ShiftEntry> {
 fun reapplyOvertimeRulesToEntries(entries: List<ShiftEntry>, settings: AppSettings): List<ShiftEntry> {
     val thresholdMinutes = (settings.overtimeDailyThresholdHours * 60).toLong()
     val hourlyRate = PayrollCalculator.hourlyRate(settings)
-    val result = mutableListOf<ShiftEntry>()
+
+    // Undo any previous split first, so changing the threshold (or disabling overtime) re-derives
+    // the split from the original, un-split duration instead of layering on top of a stale one.
+    val merged = mutableListOf<ShiftEntry>()
+    val consumedOvertimeIds = mutableSetOf<String>()
     for (entry in entries) {
+        if (entry.shiftType != ShiftType.REGULAR) continue
+        val regularEndMillis = entry.startedAtMillis + entry.durationMinutes * 60000
+        val pairedOvertime = entries.firstOrNull {
+            it.shiftType == ShiftType.OVERTIME && it.startedAtMillis == regularEndMillis
+        }
+        if (pairedOvertime != null) {
+            consumedOvertimeIds += pairedOvertime.id
+            merged += entry.copy(durationMinutes = entry.durationMinutes + pairedOvertime.durationMinutes)
+        } else {
+            merged += entry
+        }
+    }
+    // Overtime entries without a matching regular predecessor (orphans) pass through untouched.
+    merged += entries.filter { it.shiftType == ShiftType.OVERTIME && it.id !in consumedOvertimeIds }
+    merged += entries.filter { it.shiftType != ShiftType.REGULAR && it.shiftType != ShiftType.OVERTIME }
+
+    val result = mutableListOf<ShiftEntry>()
+    for (entry in merged) {
         if (!settings.overtimeEnabled || entry.shiftType != ShiftType.REGULAR || entry.durationMinutes <= thresholdMinutes) {
-            result += entry
+            result += entry.copy(
+                hourlyRate = hourlyRate,
+                estimatedPay = PayrollCalculator.estimatePay(entry.durationMinutes, entry.unpaidBreakMinutes, hourlyRate, entry.shiftType, settings.overtimeEnabled, thresholdMinutes, settings.overtimeMultiplier, settings.workDayHours, settings.salaryAmount)
+            )
             continue
         }
         val regularEntry = entry.copy(

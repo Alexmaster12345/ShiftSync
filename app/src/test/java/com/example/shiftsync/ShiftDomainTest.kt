@@ -183,4 +183,34 @@ class ShiftDomainTest {
         assertEquals(1, result.size)
         assertEquals(600L, result[0].durationMinutes)
     }
+
+    @Test
+    fun reapplyOvertimeRules_reDerivesAnAlreadySplitPairWhenThresholdChanges() {
+        // A previous 8h-threshold split: 480min regular + 120min overtime, back to back.
+        val regular = entry(startedAtMillis = 0L, shiftType = ShiftType.REGULAR, durationMinutes = 480L, id = "reg")
+        val overtime = entry(startedAtMillis = 480L * 60000, shiftType = ShiftType.OVERTIME, durationMinutes = 120L, id = "ot")
+        val settings = AppSettings(overtimeEnabled = true, overtimeDailyThresholdHours = 9.0, overtimeMultiplier = 1.5, paymentType = PaymentType.HOURLY, salaryAmount = 20.0)
+
+        val result = reapplyOvertimeRulesToEntries(listOf(regular, overtime), settings).sortedBy { it.startedAtMillis }
+
+        // Merged back to the original 600min shift, then re-split at the new 9h threshold.
+        assertEquals(2, result.size)
+        assertEquals(ShiftType.REGULAR, result[0].shiftType)
+        assertEquals(540L, result[0].durationMinutes)
+        assertEquals(ShiftType.OVERTIME, result[1].shiftType)
+        assertEquals(60L, result[1].durationMinutes)
+    }
+
+    @Test
+    fun reapplyOvertimeRules_mergesSplitPairBackWhenOvertimeDisabled() {
+        val regular = entry(startedAtMillis = 0L, shiftType = ShiftType.REGULAR, durationMinutes = 480L, id = "reg")
+        val overtime = entry(startedAtMillis = 480L * 60000, shiftType = ShiftType.OVERTIME, durationMinutes = 120L, id = "ot")
+        val settings = AppSettings(overtimeEnabled = false, overtimeDailyThresholdHours = 8.0)
+
+        val result = reapplyOvertimeRulesToEntries(listOf(regular, overtime), settings)
+
+        assertEquals(1, result.size)
+        assertEquals(ShiftType.REGULAR, result[0].shiftType)
+        assertEquals(600L, result[0].durationMinutes)
+    }
 }
