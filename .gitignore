@@ -1,12 +1,9 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+# IDE project state — untracked entirely; deploymentTargetSelector.xml was leaking a local
+# machine username via an absolute device path.
+/.idea/
 .DS_Store
 /build
 /captures
